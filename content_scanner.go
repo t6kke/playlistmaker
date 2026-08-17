@@ -1,10 +1,12 @@
 package main
 
 import (
-	"fmt"
+	//"fmt"
 	"os"
 	"slices"
 	"strings"
+
+	"github.com/t6kke/playlistmaker/internal/tags"
 )
 
 func (mlc *MusicLibraryConfig) scanner() {
@@ -14,11 +16,16 @@ func (mlc *MusicLibraryConfig) scanner() {
 func recursive_scanner(dir, spacer string) {
 	audio_file_extensions := []string{"mp3", "flac"} //TODO need to map out more items
 	files, _ := os.ReadDir(dir)
+	file_count := 0
 	for _, file := range files {
+		file_count += 1
 		if !file.IsDir() && slices.Contains(audio_file_extensions, strings.Split(file.Name(), ".")[len(strings.Split(file.Name(), "."))-1]) {
-			fmt.Println(spacer, dir+"/"+file.Name()) //TODO this is an actual audio file need to do metadata extraction and then use that to build playlist
+			//fmt.Println(spacer, dir+"/"+file.Name()) //TODO this is an actual audio file need to do metadata extraction and then use that to build playlist
+			if file_count == 1 {
+				tags.Test(dir+"/"+file.Name())
+			}
 		} else if file.IsDir() {
-			fmt.Println(spacer, file.Name())
+			//fmt.Println(spacer, file.Name())
 			if string(file.Name()[0]) == "_" && strings.Contains(file.Name(), "_soundtracks") {
 				//TODO handle separately
 			} else {

@@ -10,6 +10,48 @@ import (
 	"unicode/utf16"
 )
 
+//following details from: https://id3.org/id3v2.3.0#ID3v2_header
+var frame_identifier_name_map = map[string]string{
+	"TALB": "album name",
+	"TBPM": "beats per minute",
+	"TCOM": "composers name",
+	"TCON": "content type", //TODO more details here for genres
+	"TCOP": "copyright infromation",
+	"TDAT": "date information in DDMM format",
+	"TDLY": "playlist details, silence between songs in a playlist",
+	"TENC": "person or organization that encoded the file",
+	"TEXT": "writers of the content",
+	"TFLT": "file type, indicates type of audio this tag defines", //TODO more details
+	"TIME": "time of the recording in HHMM format",
+	"TIT1": "content group description",
+	"TIT2": "name of the song/piece",
+	"TIT3": "subtitle or descrition of the song/piece",
+	"TKEY": "musical key in which the sound starts",
+	"TLAN": "language(s) of the lyrics of the song",
+	"TLEN": "length of the audiofile in milliseconds represented as numeric string",
+	"TMED": "description of the media the sound originated from", //TODO more details
+	"TOAL": "original album of the song",
+	"TOFN": "orignial/preferred filename",
+	"TOLY": "original writers of the lyrics",
+	"TOPE": "original performer",
+	"TORY": "original release year",
+	"TOWN": "license owner name",
+	"TPE1": "main artist name",
+	"TPE2": "additional information on the performers",
+	"TPE3": "conductor name",
+	"TPE4": "information on the authors of the remix",
+	"TPOS": "information what part of the set the audio came from(CD1, CD2 etc.), in numeric string format",
+	"TPUB": "lable or publisher name",
+	"TRCK": "track number",
+	"TRDA": "reckording date, used as acompliment to TYER, TDAT and TIME",
+	"TRSN": "internet radio station name",
+	"TRSO": "internet radio station owner",
+	"TSIZ": "size of the audio file in bytes excluding the tag",
+	"TSRC": "International Standard Recording Code(ISRC)",
+	"TSSE": "audio encoder used and it's setting when it was encoded",
+	"TYER": "year of the recording, in numeric string format and always four characters long",
+}
+
 func Test(path string) {
 	f, err := os.Open(filepath.Clean(path))
 	if err != nil {
@@ -31,7 +73,7 @@ func Test(path string) {
 		fmt.Printf("decimal: %d --- hex: %02x --- binary: %08b --- char: %c\n", header[i], header[i], header[i], header[i])
 	}
 
-	tag_size := fix_tagsize_staring_bits(header[6:10])
+	tag_size := getCorrectTagSize(header[6:10])
 	fmt.Println(tag_size)
 
 	fmt.Printf("file header type: %s, and header version: %d.%d, flags: %08b and tag size of: %d\n", string(header[0:3]), header[3], header[4], header[5], header[6:10])
@@ -49,6 +91,7 @@ func Test(path string) {
 
 			//stop after final tag item
 			if id == "\x00\x00\x00\x00" {
+				fmt.Println(id, " --- no more data")
 				break
 			}
 
@@ -57,7 +100,11 @@ func Test(path string) {
 				break
 			}
 
-			switch id {
+			fmt.Println(id, " --- " ,frame_identifier_name_map[id])
+			fmt.Println(tag_data[pos+4 : pos+8], int(binary.BigEndian.Uint32(tag_data[pos+4 : pos+8])))
+
+
+			/*switch id {
 			case "TIT2":
 				fmt.Println(id)
 				fmt.Println("Title")
@@ -93,14 +140,14 @@ func Test(path string) {
 				fmt.Println(frame)
 				decoded_frame_info := decodeText(frame)
 				fmt.Println(decoded_frame_info)
-			}
+			}*/
 
 			pos += 10 + size
 		}
 	}
 }
 
-func fix_tagsize_staring_bits(b []byte) int {
+func getCorrectTagSize(b []byte) int {
 	//fmt.Printf("%08b  %08b %08b\n",b[2], b[2]&0x7f, int(b[2]&0x7f)<<7)
 	full_data := int(b[0]&0x7f)<<21 | int(b[1]&0x7f)<<14 | int(b[2]&0x7f)<<7 | int(b[3]&0x7f)
 	//fmt.Printf("%d, %08b", full_data, full_data)

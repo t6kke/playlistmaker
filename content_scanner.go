@@ -9,12 +9,16 @@ import (
 	"github.com/t6kke/playlistmaker/internal/tags"
 )
 
+func getAudioFileExtensions() []string {
+	return []string{"mp3", "flac"} //TODO need to map out more items
+}
+
 func (mlc *MusicLibraryConfig) scanner() {
 	recursive_scanner(mlc.Songs_dir, "")
 }
 
 func recursive_scanner(dir, spacer string) {
-	audio_file_extensions := []string{"mp3", "flac"} //TODO need to map out more items
+	audio_file_extensions := getAudioFileExtensions()
 	files, _ := os.ReadDir(dir)
 	file_count := 0
 	for _, file := range files {

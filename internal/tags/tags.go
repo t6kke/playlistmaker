@@ -6,51 +6,60 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"unicode/utf16"
 )
 
-//following details from: https://id3.org/id3v2.3.0#ID3v2_header
-var frame_identifier_name_map = map[string]string{
-	"TALB": "album name",
-	"TBPM": "beats per minute",
-	"TCOM": "composers name",
-	"TCON": "content type", //TODO more details here for genres
-	"TCOP": "copyright infromation",
-	"TDAT": "date information in DDMM format",
-	"TDLY": "playlist details, silence between songs in a playlist",
-	"TENC": "person or organization that encoded the file",
-	"TEXT": "writers of the content",
-	"TFLT": "file type, indicates type of audio this tag defines", //TODO more details
-	"TIME": "time of the recording in HHMM format",
-	"TIT1": "content group description",
-	"TIT2": "name of the song/piece",
-	"TIT3": "subtitle or descrition of the song/piece",
-	"TKEY": "musical key in which the sound starts",
-	"TLAN": "language(s) of the lyrics of the song",
-	"TLEN": "length of the audiofile in milliseconds represented as numeric string",
-	"TMED": "description of the media the sound originated from", //TODO more details
-	"TOAL": "original album of the song",
-	"TOFN": "orignial/preferred filename",
-	"TOLY": "original writers of the lyrics",
-	"TOPE": "original performer",
-	"TORY": "original release year",
-	"TOWN": "license owner name",
-	"TPE1": "main artist name",
-	"TPE2": "additional information on the performers",
-	"TPE3": "conductor name",
-	"TPE4": "information on the authors of the remix",
-	"TPOS": "information what part of the set the audio came from(CD1, CD2 etc.), in numeric string format",
-	"TPUB": "lable or publisher name",
-	"TRCK": "track number",
-	"TRDA": "reckording date, used as acompliment to TYER, TDAT and TIME",
-	"TRSN": "internet radio station name",
-	"TRSO": "internet radio station owner",
-	"TSIZ": "size of the audio file in bytes excluding the tag",
-	"TSRC": "International Standard Recording Code(ISRC)",
-	"TSSE": "audio encoder used and it's setting when it was encoded",
-	"TYER": "year of the recording, in numeric string format and always four characters long",
+func getFrameIdentifierMap() map[string]string {
+	//following details from: https://id3.org/id3v2.3.0#ID3v2_header
+	return map[string]string{
+		"TALB": "album name",
+		"TBPM": "beats per minute",
+		"TCOM": "composers name",
+		"TCON": "content type", //TODO more details here for genres
+		"TCOP": "copyright infromation",
+		"TDAT": "date information in DDMM format",
+		"TDLY": "playlist details, silence between songs in a playlist",
+		"TENC": "person or organization that encoded the file",
+		"TEXT": "writers of the content",
+		"TFLT": "file type, indicates type of audio this tag defines", //TODO more details
+		"TIME": "time of the recording in HHMM format",
+		"TIT1": "content group description",
+		"TIT2": "name of the song/piece",
+		"TIT3": "subtitle or descrition of the song/piece",
+		"TKEY": "musical key in which the sound starts",
+		"TLAN": "language(s) of the lyrics of the song",
+		"TLEN": "length of the audiofile in milliseconds represented as numeric string",
+		"TMED": "description of the media the sound originated from", //TODO more details
+		"TOAL": "original album of the song",
+		"TOFN": "orignial/preferred filename",
+		"TOLY": "original writers of the lyrics",
+		"TOPE": "original performer",
+		"TORY": "original release year",
+		"TOWN": "license owner name",
+		"TPE1": "main artist name",
+		"TPE2": "additional information on the performers",
+		"TPE3": "conductor name",
+		"TPE4": "information on the authors of the remix",
+		"TPOS": "information what part of the set the audio came from(CD1, CD2 etc.), in numeric string format",
+		"TPUB": "lable or publisher name",
+		"TRCK": "track number",
+		"TRDA": "reckording date, used as acompliment to TYER, TDAT and TIME",
+		"TRSN": "internet radio station name",
+		"TRSO": "internet radio station owner",
+		"TSIZ": "size of the audio file in bytes excluding the tag",
+		"TSRC": "International Standard Recording Code(ISRC)",
+		"TSSE": "audio encoder used and it's setting when it was encoded",
+		"TYER": "year of the recording, in numeric string format and always four characters long",
+	}
 }
+
+func getFrameIdentifierSliceToParse() []string {
+	return []string{"TIT2", "TPE1", "TALB", "TLEN", "TRCK"}
+}
+
+
 
 func Test(path string) {
 	f, err := os.Open(filepath.Clean(path))
@@ -65,20 +74,18 @@ func Test(path string) {
 	}
 
 	fmt.Println(path)
+	fmt.Println("Header Data")
 	fmt.Println(header[0:10])
-	for i := range 10 {
-		fmt.Printf("byte: %d values: ", i)
-		fmt.Print(header[i])
-		fmt.Printf(" %08b\n", header[i])
-		fmt.Printf("decimal: %d --- hex: %02x --- binary: %08b --- char: %c\n", header[i], header[i], header[i], header[i])
-	}
 
 	tag_size := getCorrectTagSize(header[6:10])
-	fmt.Println(tag_size)
 
-	fmt.Printf("file header type: %s, and header version: %d.%d, flags: %08b and tag size of: %d\n", string(header[0:3]), header[3], header[4], header[5], header[6:10])
+	fmt.Printf("file header type: %s --- and version: %d.%d --- flags: %08b and tag size of: %d, bytes: %d\n", string(header[0:3]), header[3], header[4], header[5], tag_size, header[6:10])
+
+	frame_identifier_name_map := getFrameIdentifierMap()
+	frame_identifier_list_to_parse := getFrameIdentifierSliceToParse()
 
 	if int(header[3]) == 3 {
+		fmt.Println("   ", "Frames Data")
 		tag_data := make([]byte, tag_size)
 		_, err := io.ReadFull(f, tag_data) //TODO handle error
 		if err != nil {
@@ -87,11 +94,13 @@ func Test(path string) {
 
 		frameHeaderSize := 10
 		for pos := 0; pos+frameHeaderSize <= len(tag_data); {
+			fmt.Println("   ", tag_data[pos:pos+10])
+
 			id := string(tag_data[pos : pos+4])
 
 			//stop after final tag item
 			if id == "\x00\x00\x00\x00" {
-				fmt.Println(id, " --- no more data")
+				fmt.Println("   ",  " --- no more data")
 				break
 			}
 
@@ -100,51 +109,17 @@ func Test(path string) {
 				break
 			}
 
-			fmt.Println(id, " --- " ,frame_identifier_name_map[id])
-			fmt.Println(tag_data[pos+4 : pos+8], int(binary.BigEndian.Uint32(tag_data[pos+4 : pos+8])))
-
-
-			/*switch id {
-			case "TIT2":
-				fmt.Println(id)
-				fmt.Println("Title")
+			fmt.Printf("    frame header id: %s --- and size of: %d, bytes: %d --- flags data: %08b\n", id,  size, tag_data[pos+4 : pos+8], tag_data[pos+8 : pos+10])
+			if slices.Contains(frame_identifier_list_to_parse, id) {
 				frame := tag_data[pos+10 : pos+10+size]
-				fmt.Println(frame)
-				decoded_frame_info := decodeText(frame)
-				fmt.Println(decoded_frame_info)
-			case "TPE1":
-				fmt.Println(id)
-				fmt.Println("Artist")
-				frame := tag_data[pos+10 : pos+10+size]
-				fmt.Println(frame)
-				decoded_frame_info := decodeText(frame)
-				fmt.Println(decoded_frame_info)
-			case "TALB":
-				fmt.Println(id)
-				fmt.Println("Album")
-				frame := tag_data[pos+10 : pos+10+size]
-				fmt.Println(frame)
-				decoded_frame_info := decodeText(frame)
-				fmt.Println(decoded_frame_info)
-			case "TLEN":
-				fmt.Println(id)
-				fmt.Println("Duration")
-				frame := tag_data[pos+10 : pos+10+size]
-				fmt.Println(frame)
-				decoded_frame_info := decodeText(frame)
-				fmt.Println(decoded_frame_info)
-			case "TRCK":
-				fmt.Println(id)
-				fmt.Println("Track")
-				frame := tag_data[pos+10 : pos+10+size]
-				fmt.Println(frame)
-				decoded_frame_info := decodeText(frame)
-				fmt.Println(decoded_frame_info)
-			}*/
+				fmt.Println("        ", frame)
+				fmt.Printf("         %s: %v\n",  frame_identifier_name_map[id], decodeText(frame))
+			}
 
 			pos += 10 + size
 		}
 	}
+	fmt.Println("")
 }
 
 func getCorrectTagSize(b []byte) int {
@@ -157,19 +132,18 @@ func getCorrectTagSize(b []byte) int {
 
 func decodeText(data []byte) string {
 	encoding := data[0]
-	fmt.Println(encoding)
+	//fmt.Println(encoding)
 
 	data = data[1:]
 
 	switch encoding {
 	case 0x00:
 		// ISO-8859-1.
-		/*runes := make([]rune, len(data))
+		runes := make([]rune, len(data))
 		for i, b := range data {
 			runes[i] = rune(b)
 		}
-		return strings.TrimRight(string(runes), "\x00")*/
-		//TODO
+		return strings.TrimRight(string(runes), "\x00")
 	case 0x01:
 		// UTF-16 with BOM.
 		if len(data) < 2 {
@@ -180,21 +154,15 @@ func decodeText(data []byte) string {
 		data = data[2:]
 
 		return decodeUTF16(data, littleEndian)
-
 	case 0x02:
 		// UTF-16BE.
-		//return decodeUTF16(data, false)
-		//TODO
-
+		return decodeUTF16(data, false)
 	case 0x03:
 		// UTF-8.
-		//return strings.TrimRight(string(data), "\x00")
-		//TODO
+		return strings.TrimRight(string(data), "\x00")
 	default:
 		return ""
 	}
-
-	return ""
 }
 
 func decodeUTF16(data []byte, littleEndian bool) string {

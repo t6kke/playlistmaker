@@ -1,7 +1,7 @@
 package main
 
 import (
-	//"fmt"
+	"fmt"
 	"os"
 	"slices"
 	"strings"
@@ -26,7 +26,11 @@ func recursive_scanner(dir, spacer string) {
 		if !file.IsDir() && slices.Contains(audio_file_extensions, strings.Split(file.Name(), ".")[len(strings.Split(file.Name(), "."))-1]) {
 			//fmt.Println(spacer, dir+"/"+file.Name()) //TODO this is an actual audio file need to do metadata extraction and then use that to build playlist
 			if file_count == 1 {
-				tags.Test(dir + "/" + file.Name())
+				metadata, err := tags.ExtractMetadata(dir + "/" + file.Name())
+				if err != nil {
+					return
+				}
+				fmt.Println(metadata)
 			}
 		} else if file.IsDir() {
 			//fmt.Println(spacer, file.Name())

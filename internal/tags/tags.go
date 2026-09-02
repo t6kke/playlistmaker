@@ -59,18 +59,25 @@ func getFrameIdentifierSliceToParse() []string {
 	return []string{"TIT2", "TPE1", "TALB", "TLEN", "TRCK"}
 }
 
+type metadata struct {
+	path      string
+	title     string
+	creator   string
+	album     string
+	duration  string
+	track_nbr string
+}
 
-
-func Test(path string) {
+func ExtractMetadata(path string) (metadata, error) {
 	f, err := os.Open(filepath.Clean(path))
 	if err != nil {
-		return
+		return metadata{}, err
 	}
 	defer f.Close()
 
 	header := make([]byte, 10)
 	if _, err := io.ReadFull(f, header); err != nil {
-		return
+		return metadata{}, err
 	}
 
 	fmt.Println(path)
@@ -84,12 +91,15 @@ func Test(path string) {
 	frame_identifier_name_map := getFrameIdentifierMap()
 	frame_identifier_list_to_parse := getFrameIdentifierSliceToParse()
 
+	data := metadata{}
+	data.path = path
+
 	if int(header[3]) == 3 {
 		fmt.Println("   ", "Frames Data")
 		tag_data := make([]byte, tag_size)
 		_, err := io.ReadFull(f, tag_data) //TODO handle error
 		if err != nil {
-			return
+			return metadata{}, err
 		}
 
 		frameHeaderSize := 10
@@ -100,7 +110,7 @@ func Test(path string) {
 
 			//stop after final tag item
 			if id == "\x00\x00\x00\x00" {
-				fmt.Println("   ",  " --- no more data")
+				fmt.Println("   ", " --- no more data")
 				break
 			}
 
@@ -109,17 +119,39 @@ func Test(path string) {
 				break
 			}
 
-			fmt.Printf("    frame header id: %s --- and size of: %d, bytes: %d --- flags data: %08b\n", id,  size, tag_data[pos+4 : pos+8], tag_data[pos+8 : pos+10])
+			fmt.Printf("    frame header id: %s --- and size of: %d, bytes: %d --- flags data: %08b\n", id, size, tag_data[pos+4:pos+8], tag_data[pos+8:pos+10])
 			if slices.Contains(frame_identifier_list_to_parse, id) {
 				frame := tag_data[pos+10 : pos+10+size]
 				fmt.Println("        ", frame)
-				fmt.Printf("         %s: %v\n",  frame_identifier_name_map[id], decodeText(frame))
+				fmt.Printf("         %s: %v\n", frame_identifier_name_map[id], decodeText(frame))
+
+				//TODO data validation, if something is missing alternative method has to be used to get the info
+				switch id {
+				case "TIT2":
+					//TODO validation, likely from the file name
+					data.title = decodeText(frame)
+				case "TPE1":
+					//TODO validation, likely from the file name
+					data.creator = decodeText(frame)
+				case "TALB":
+					//TODO validation, how? tbd
+					data.album = decodeText(frame)
+				case "TLEN":
+					//TODO validation, calculated other information from the file
+					data.duration = decodeText(frame)
+				case "TRCK":
+					//TODO validation, maybe from the file name, or just based on the order of the files in the directory
+					data.track_nbr = decodeText(frame)
+				}
 			}
 
 			pos += 10 + size
 		}
 	}
+	fmt.Println(data)
 	fmt.Println("")
+
+	return data, nil
 }
 
 func getCorrectTagSize(b []byte) int {

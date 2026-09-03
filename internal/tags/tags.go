@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"slices"
+	"strconv"
 	"strings"
 	"unicode/utf16"
 )
@@ -68,7 +69,7 @@ type metadata struct {
 	track_nbr string
 }
 
-func ExtractMetadata(path string) (metadata, error) {
+func ExtractMetadata(path string, n_th_file_in_dir int) (metadata, error) {
 	f, err := os.Open(filepath.Clean(path))
 	if err != nil {
 		return metadata{}, err
@@ -93,6 +94,11 @@ func ExtractMetadata(path string) (metadata, error) {
 
 	data := metadata{}
 	data.path = path
+
+	file_name := getFileName(path)
+	fmt.Println(file_name)
+	metadata_from_file := getMetadataFromPath(path)
+	fmt.Println(metadata_from_file)
 
 	if int(header[3]) == 3 {
 		fmt.Println("   ", "Frames Data")
@@ -141,6 +147,12 @@ func ExtractMetadata(path string) (metadata, error) {
 					data.duration = decodeText(frame)
 				case "TRCK":
 					//TODO validation, maybe from the file name, or just based on the order of the files in the directory
+					var track_nbr string
+					track_nbr = decodeText(frame)
+					if track_nbr == "" {
+						fmt.Printf("       no track number in frame, using file count value: %d\n", n_th_file_in_dir)
+						track_nbr = strconv.Itoa(n_th_file_in_dir)
+					}
 					data.track_nbr = decodeText(frame)
 				}
 			}
@@ -160,6 +172,47 @@ func getCorrectTagSize(b []byte) int {
 	//fmt.Printf("%d, %08b", full_data, full_data)
 
 	return full_data
+}
+
+func getFileName(path string) string {
+	i := strings.LastIndex(path, "/")
+	return path[i+1:]
+}
+
+type path_metadata struct{
+	song_name    string
+	album_name   string
+	artist_name  string
+	track_number string
+}
+
+func getMetadataFromPath(path string) path_metadata {
+	parts := strings.Split(path, "/")
+	parts_len := len(parts)
+	var data path_metadata
+	var track_number_from_file string
+	potential_track_nbr := parts[parts_len-1][:2]
+	_, err := strconv.Atoi(potential_track_nbr)
+	if err == nil {
+		track_number_from_file = potential_track_nbr
+	}
+	for i := parts_len - 1; i >= 0; i-- {
+		switch i {
+		case parts_len - 1:
+			if len(track_number_from_file) > 0 {
+				data.song_name = parts[i][3:]
+				data.track_number = track_number_from_file
+			} else {
+				data.song_name = parts[i]
+			}
+		case parts_len - 2:
+			data.album_name = parts[i]
+		case parts_len - 3:
+			data.artist_name = parts[i]
+		}
+	}
+
+	return data
 }
 
 func decodeText(data []byte) string {

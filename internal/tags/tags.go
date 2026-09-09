@@ -187,32 +187,53 @@ type path_metadata struct{
 }
 
 func getMetadataFromPath(path string) path_metadata {
+	var result_data path_metadata
+
 	parts := strings.Split(path, "/")
 	parts_len := len(parts)
-	var data path_metadata
-	var track_number_from_file string
-	potential_track_nbr := parts[parts_len-1][:2]
-	_, err := strconv.Atoi(potential_track_nbr)
-	if err == nil {
-		track_number_from_file = potential_track_nbr
-	}
+
 	for i := parts_len - 1; i >= 0; i-- {
 		switch i {
 		case parts_len - 1:
+			var track_number_from_file string
+			if isNumeric(parts[parts_len-1][:2]) {
+				track_number_from_file = parts[parts_len-1][:2]
+			}
+			file_name_parts := strings.Split(parts[i], "-")
+			switch len(file_name_parts){
+			case 1:
+				fmt.Println(file_name_parts)
+			case 2:
+				fmt.Println(file_name_parts)
+			case 3:
+				fmt.Println(file_name_parts)
+			}
 			if len(track_number_from_file) > 0 {
-				data.song_name = parts[i][3:]
-				data.track_number = track_number_from_file
+				result_data.song_name = parts[i][3:]
+				result_data.track_number = track_number_from_file
 			} else {
-				data.song_name = parts[i]
+				result_data.song_name = parts[i]
 			}
 		case parts_len - 2:
-			data.album_name = parts[i]
+			result_data.album_name = parts[i]
 		case parts_len - 3:
-			data.artist_name = parts[i]
+			result_data.artist_name = parts[i]
 		}
 	}
+	return result_data
+}
 
-	return data
+func isNumeric(input any) bool {
+	if _, ok := input.(int); ok {
+		return true
+	}
+	if data, ok := input.(string); ok {
+		_, err := strconv.Atoi(data)
+		if err == nil {
+			return true
+		}
+	}
+	return false
 }
 
 func decodeText(data []byte) string {

@@ -98,7 +98,7 @@ func ExtractMetadata(path string, n_th_file_in_dir int) (metadata, error) {
 	file_name := getFileName(path)
 	fmt.Println(file_name)
 	metadata_from_file := getMetadataFromPath(path)
-	fmt.Println(metadata_from_file)
+	fmt.Printf("%+v\n", metadata_from_file)
 
 	if int(header[3]) == 3 {
 		fmt.Println("   ", "Frames Data")
@@ -194,30 +194,55 @@ func getMetadataFromPath(path string) path_metadata {
 
 	for i := parts_len - 1; i >= 0; i-- {
 		switch i {
-		case parts_len - 1:
-			var track_number_from_file string
-			if isNumeric(parts[parts_len-1][:2]) {
+		case parts_len - 1: //when file name also includes both artist and album
+			var album_name_from_file string
+			var artist_name_from_file string
+			/*if isNumeric(parts[parts_len-1][:2]) {
 				track_number_from_file = parts[parts_len-1][:2]
-			}
+			}*/
+
 			file_name_parts := strings.Split(parts[i], "-")
+
 			switch len(file_name_parts){
 			case 1:
-				fmt.Println(file_name_parts)
+				if isNumeric(file_name_parts[0][:2]) {
+					result_data.track_number = file_name_parts[0][:2]
+					result_data.song_name = file_name_parts[0][3:]
+				} else {
+					result_data.song_name = file_name_parts[0]
+				}
 			case 2:
-				fmt.Println(file_name_parts)
+				album_name_from_file = strings.TrimSpace(file_name_parts[1])
+				potential_song_name := strings.TrimSpace(strings.Split(file_name_parts[1], ".")[0])
+				if isNumeric(potential_song_name[:2]) {
+					result_data.track_number = potential_song_name[:2]
+					result_data.song_name = potential_song_name[3:]
+				} else {
+					result_data.song_name = potential_song_name
+				}
 			case 3:
-				fmt.Println(file_name_parts)
+				artist_name_from_file = strings.TrimSpace(file_name_parts[0])
+				album_name_from_file = strings.TrimSpace(file_name_parts[1])
+				potential_song_name := strings.TrimSpace(strings.Split(file_name_parts[2], ".")[0])
+				if isNumeric(potential_song_name[:2]) {
+					result_data.track_number = potential_song_name[:2]
+					result_data.song_name = potential_song_name[3:]
+				}else {
+					result_data.song_name = potential_song_name
+				}
 			}
-			if len(track_number_from_file) > 0 {
-				result_data.song_name = parts[i][3:]
-				result_data.track_number = track_number_from_file
-			} else {
-				result_data.song_name = parts[i]
-			}
+			result_data.album_name = album_name_from_file
+			result_data.artist_name = artist_name_from_file
+
 		case parts_len - 2:
-			result_data.album_name = parts[i]
+			if result_data.album_name != "" {
+				result_data.album_name = parts[i]
+			}
+
 		case parts_len - 3:
-			result_data.artist_name = parts[i]
+			if result_data.artist_name != "" {
+				result_data.artist_name = parts[i]
+			}
 		}
 	}
 	return result_data

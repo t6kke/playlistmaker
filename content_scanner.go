@@ -28,11 +28,11 @@ func recursive_scanner(dir, spacer string) {
 			//fmt.Println(spacer, dir+"/"+file.Name()) //TODO this is an actual audio file need to do metadata extraction and then use that to build playlist
 			if file_count == 1 {
 				music_file_count += 1
-				metadata, err := tags.ExtractMetadata(dir + "/" + file.Name(), music_file_count)
+				metadata, err := tags.ExtractMetadata(dir+"/"+file.Name(), music_file_count)
 				if err != nil {
 					return
 				}
-				fmt.Println(metadata)
+				fmt.Printf("%+v\n", metadata)
 			}
 		} else if file.IsDir() {
 			//fmt.Println(spacer, file.Name())

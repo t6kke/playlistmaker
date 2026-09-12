@@ -97,8 +97,8 @@ func ExtractMetadata(path string, n_th_file_in_dir int) (metadata, error) {
 
 	file_name := getFileName(path)
 	fmt.Println(file_name)
-	metadata_from_file := getMetadataFromPath(path)
-	fmt.Printf("%+v\n", metadata_from_file)
+	//metadata_from_file := getMetadataFromPath(path)
+	//fmt.Printf("%+v\n", metadata_from_file)
 
 	if int(header[3]) == 3 {
 		fmt.Println("   ", "Frames Data")
@@ -131,38 +131,46 @@ func ExtractMetadata(path string, n_th_file_in_dir int) (metadata, error) {
 				fmt.Println("        ", frame)
 				fmt.Printf("         %s: %v\n", frame_identifier_name_map[id], decodeText(frame))
 
-				//TODO data validation, if something is missing alternative method has to be used to get the info
 				switch id {
 				case "TIT2":
-					//TODO validation, likely from the file name
 					data.title = decodeText(frame)
 				case "TPE1":
-					//TODO validation, likely from the file name
 					data.creator = decodeText(frame)
 				case "TALB":
-					//TODO validation, how? tbd
 					data.album = decodeText(frame)
 				case "TLEN":
-					//TODO validation, calculated other information from the file
 					data.duration = decodeText(frame)
 				case "TRCK":
-					//TODO validation, maybe from the file name, or just based on the order of the files in the directory
-					var track_nbr string
-					track_nbr = decodeText(frame)
-					if track_nbr == "" {
-						fmt.Printf("       no track number in frame, using file count value: %d\n", n_th_file_in_dir)
-						track_nbr = strconv.Itoa(n_th_file_in_dir)
-					}
 					data.track_nbr = decodeText(frame)
 				}
 			}
-
 			pos += 10 + size
 		}
 	}
-	fmt.Println(data)
-	fmt.Println("")
 
+	if data.title == "" {
+		data.title = getMetadataFromPath(path).song_name
+	}
+	if data.creator == "" {
+		data.creator = getMetadataFromPath(path).artist_name
+	}
+	if data.album == "" {
+		data.album = getMetadataFromPath(path).album_name
+	}
+	if data.duration == "" {
+		//TODO
+	}
+	if data.track_nbr == "" {
+		metadata_from_file := getMetadataFromPath(path)
+		//fmt.Printf("       no track number in frame, using value from file name: %s\n", metadata_from_file.track_number)
+		data.track_nbr = metadata_from_file.track_number
+	}
+	if data.track_nbr == "" {
+		//fmt.Printf("       no track number in frame, nor in file name, using file count value: %d\n", n_th_file_in_dir)
+		data.track_nbr = strconv.Itoa(n_th_file_in_dir)
+	}
+
+	//fmt.Printf("%+v\n", data)
 	return data, nil
 }
 
@@ -179,7 +187,7 @@ func getFileName(path string) string {
 	return path[i+1:]
 }
 
-type path_metadata struct{
+type path_metadata struct {
 	song_name    string
 	album_name   string
 	artist_name  string
@@ -194,16 +202,13 @@ func getMetadataFromPath(path string) path_metadata {
 
 	for i := parts_len - 1; i >= 0; i-- {
 		switch i {
-		case parts_len - 1: //when file name also includes both artist and album
+		case parts_len - 1:
 			var album_name_from_file string
 			var artist_name_from_file string
-			/*if isNumeric(parts[parts_len-1][:2]) {
-				track_number_from_file = parts[parts_len-1][:2]
-			}*/
 
 			file_name_parts := strings.Split(parts[i], "-")
 
-			switch len(file_name_parts){
+			switch len(file_name_parts) {
 			case 1:
 				if isNumeric(file_name_parts[0][:2]) {
 					result_data.track_number = file_name_parts[0][:2]
@@ -212,7 +217,7 @@ func getMetadataFromPath(path string) path_metadata {
 					result_data.song_name = file_name_parts[0]
 				}
 			case 2:
-				album_name_from_file = strings.TrimSpace(file_name_parts[1])
+				artist_name_from_file = strings.TrimSpace(file_name_parts[0])
 				potential_song_name := strings.TrimSpace(strings.Split(file_name_parts[1], ".")[0])
 				if isNumeric(potential_song_name[:2]) {
 					result_data.track_number = potential_song_name[:2]
@@ -227,7 +232,7 @@ func getMetadataFromPath(path string) path_metadata {
 				if isNumeric(potential_song_name[:2]) {
 					result_data.track_number = potential_song_name[:2]
 					result_data.song_name = potential_song_name[3:]
-				}else {
+				} else {
 					result_data.song_name = potential_song_name
 				}
 			}
@@ -235,12 +240,15 @@ func getMetadataFromPath(path string) path_metadata {
 			result_data.artist_name = artist_name_from_file
 
 		case parts_len - 2:
-			if result_data.album_name != "" {
+			if result_data.album_name == "" {
 				result_data.album_name = parts[i]
 			}
 
 		case parts_len - 3:
-			if result_data.artist_name != "" {
+			if parts[i] == "all_songs" {
+				continue
+			}
+			if result_data.artist_name == "" {
 				result_data.artist_name = parts[i]
 			}
 		}

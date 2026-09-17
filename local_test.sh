@@ -1,7 +1,7 @@
 #!/bin/sh
 
-#echo "\nRunning Unit Tests..."
-#go test -cover ./...
+echo "\nRunning Unit Tests..."
+go test -cover ./...
 
 echo "\nExecuting gosec security test tool..."
 gosec ./...

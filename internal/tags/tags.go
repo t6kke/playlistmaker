@@ -175,6 +175,8 @@ func ExtractMetadata(path string, n_th_file_in_dir int) (metadata, error) {
 }
 
 func getCorrectTagSize(b []byte) int {
+	//TODO validate lenght of bytes slice and return error if it's not 4
+
 	//fmt.Printf("%08b  %08b %08b\n",b[2], b[2]&0x7f, int(b[2]&0x7f)<<7)
 	full_data := int(b[0]&0x7f)<<21 | int(b[1]&0x7f)<<14 | int(b[2]&0x7f)<<7 | int(b[3]&0x7f)
 	//fmt.Printf("%d, %08b", full_data, full_data)

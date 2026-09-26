@@ -214,9 +214,9 @@ func getMetadataFromPath(path string) path_metadata {
 			case 1:
 				if isNumeric(file_name_parts[0][:2]) {
 					result_data.track_number = file_name_parts[0][:2]
-					result_data.song_name = file_name_parts[0][3:]
+					result_data.song_name = strings.TrimSpace(strings.Split(file_name_parts[0][2:], ".")[0])
 				} else {
-					result_data.song_name = file_name_parts[0]
+					result_data.song_name = strings.Split(file_name_parts[0], ".")[0]
 				}
 			case 2:
 				artist_name_from_file = strings.TrimSpace(file_name_parts[0])

@@ -103,7 +103,7 @@ func ExtractMetadata(path string, n_th_file_in_dir int) (metadata, error) {
 	if int(header[3]) == 3 {
 		fmt.Println("   ", "Frames Data")
 		tag_data := make([]byte, tag_size)
-		_, err := io.ReadFull(f, tag_data) //TODO handle error
+		_, err := io.ReadFull(f, tag_data)
 		if err != nil {
 			return metadata{}, err
 		}
@@ -158,7 +158,7 @@ func ExtractMetadata(path string, n_th_file_in_dir int) (metadata, error) {
 		data.album = getMetadataFromPath(path).album_name
 	}
 	if data.duration == "" {
-		//TODO
+		//TODO skipped, figure out later if we actually need value here, if needed then calculation based on track details is needed
 	}
 	if data.track_nbr == "" {
 		metadata_from_file := getMetadataFromPath(path)
@@ -219,7 +219,7 @@ func getMetadataFromPath(path string) path_metadata {
 					result_data.song_name = strings.Split(file_name_parts[0], ".")[0]
 				}
 			case 2:
-				artist_name_from_file = strings.TrimSpace(file_name_parts[0])
+				album_name_from_file = strings.TrimSpace(file_name_parts[0])
 				potential_song_name := strings.TrimSpace(strings.Split(file_name_parts[1], ".")[0])
 				if isNumeric(potential_song_name[:2]) {
 					result_data.track_number = potential_song_name[:2]
@@ -243,12 +243,20 @@ func getMetadataFromPath(path string) path_metadata {
 
 		case parts_len - 2:
 			if result_data.album_name == "" {
-				result_data.album_name = parts[i]
+				parts_from_dir := strings.Split(parts[i], "-")
+
+				switch len(parts_from_dir) {
+				case 1:
+					result_data.album_name = parts[i]
+				case 2:
+					result_data.artist_name = strings.TrimSpace(parts_from_dir[0])
+					result_data.album_name = strings.TrimSpace(parts_from_dir[1])
+				}
 			}
 
 		case parts_len - 3:
 			if parts[i] == "all_songs" {
-				continue
+				break
 			}
 			if result_data.artist_name == "" {
 				result_data.artist_name = parts[i]

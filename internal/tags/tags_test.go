@@ -27,10 +27,10 @@ func Test_ExtractMetadata_Errors(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			metadata, err := ExtractMetadata(tt.path, 1)
 			if (err != nil) != tt.wantErr {
-				t.Errorf("Test %d --- ExtractMetadata() error = '%v', wantErr '%v'", i+1, err, tt.wantErr)
+				t.Errorf("Test %d --- %s\nFUCN: ExtractMetadata() --- error = '%v', wantErr = '%v'", i+1, tt.name, err, tt.wantErr)
 			}
 			if metadata != tt.result {
-				t.Errorf("Test %d --- ExtractMetadata() metadat = %v, wantErr %v", i+1, metadata, tt.result)
+				t.Errorf("Test %d --- %s\nFUCN: ExtractMetadata() --- metadat = %v, wantErr = %v", i+1, tt.name, metadata, tt.result)
 			}
 		})
 	}
@@ -61,7 +61,7 @@ func Test_getCorrectTagSize(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			size := getCorrectTagSize(tt.bytes)
 			if (size != tt.want) != tt.wantErr {
-				t.Errorf("Test %d --- getCorrectTagSize() expected = '%v', got '%v'", i+1, tt.want, size)
+				t.Errorf("Test %d --- %s\nFUCN: getCorrectTagSize() --- expected = '%v', got = '%v'", i+1, tt.name, tt.want, size)
 			}
 		})
 	}
@@ -92,7 +92,7 @@ func Test_getFileName(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			file_name := getFileName(tt.path)
 			if (file_name != tt.want) != tt.wantErr {
-				t.Errorf("Test %d --- getFileName() expected = '%v', got '%v'", i+1, tt.want, file_name)
+				t.Errorf("Test %d --- %s\nFUCN: getFileName() --- expected = '%v', got = '%v'", i+1, tt.name, tt.want, file_name)
 			}
 		})
 	}
@@ -144,22 +144,18 @@ func Test_getMetadataFromPath(t *testing.T) {
 			input: "/home/user/Music/all_songs/artist_name/artist_nm - album_nm/artist - album - 03 song_name.mp3",
 			want:  path_metadata{song_name: "song_name", album_name: "album", artist_name: "artist", track_number: "03"},
 		},
+		{
+			name:  "Album, artist and track number from drectory",
+			input: "/home/user/Music/all_songs/artist_name/artist_nm - album_nm/song_name.mp3",
+			want:  path_metadata{song_name: "song_name", album_name: "album_nm", artist_name: "artist_nm", track_number: ""},
+		},
 	}
 
 	for i, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			metadata := getMetadataFromPath(tt.input)
-			if metadata.song_name != tt.want.song_name {
-				t.Errorf("Test %d --- getMetadataFromPath() expected = '%v', got '%v'", i+1, tt.want, metadata)
-			}
-			if metadata.album_name != tt.want.album_name {
-				t.Errorf("Test %d --- getMetadataFromPath() expected = '%v', got '%v'", i+1, tt.want, metadata)
-			}
-			if metadata.artist_name != tt.want.artist_name {
-				t.Errorf("Test %d --- getMetadataFromPath() expected = '%v', got '%v'", i+1, tt.want, metadata)
-			}
-			if metadata.track_number != tt.want.track_number {
-				t.Errorf("Test %d --- getMetadataFromPath() expected = '%v', got '%v'", i+1, tt.want, metadata)
+			if metadata != tt.want {
+				t.Errorf("Test %d --- %s\nFUCN: getMetadataFromPath() --- expected = '%+v', got = '%+v'", i+1, tt.name, tt.want, metadata)
 			}
 		})
 	}
@@ -196,7 +192,7 @@ func Test_isNumeric(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			result := isNumeric(tt.input)
 			if (result != tt.want) != tt.wantErr {
-				t.Errorf("Test %d --- isNumeric() expected = '%v', got '%v'", i+1, tt.want, result)
+				t.Errorf("Test %d --- %s\nFUCN: isNumeric() --- expected = '%v', got = '%v'", i+1, tt.name, tt.want, result)
 			}
 		})
 	}

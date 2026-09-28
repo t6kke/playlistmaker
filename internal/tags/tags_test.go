@@ -6,19 +6,19 @@ func Test_ExtractMetadata_Errors(t *testing.T) {
 	tests := []struct {
 		name    string
 		path    string
-		result  metadata
+		result  Metadata
 		wantErr bool
 	}{
 		{
 			name:    "Invalid Path -- Output error",
 			path:    "dummy",
-			result:  metadata{},
+			result:  Metadata{},
 			wantErr: true,
 		},
 		{
 			name:    "Invalid Path -- Output error",
 			path:    "/home/user/Music/music.mp3",
-			result:  metadata{},
+			result:  Metadata{},
 			wantErr: true,
 		},
 	}

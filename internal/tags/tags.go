@@ -60,7 +60,7 @@ func getFrameIdentifierSliceToParse() []string {
 	return []string{"TIT2", "TPE1", "TALB", "TLEN", "TRCK"}
 }
 
-type metadata struct {
+type Metadata struct {
 	path      string
 	title     string
 	creator   string
@@ -69,16 +69,16 @@ type metadata struct {
 	track_nbr string
 }
 
-func ExtractMetadata(path string, n_th_file_in_dir int) (metadata, error) {
+func ExtractMetadata(path string, n_th_file_in_dir int) (Metadata, error) {
 	f, err := os.Open(filepath.Clean(path))
 	if err != nil {
-		return metadata{}, err
+		return Metadata{}, err
 	}
 	defer f.Close()
 
 	header := make([]byte, 10)
 	if _, err := io.ReadFull(f, header); err != nil {
-		return metadata{}, err
+		return Metadata{}, err
 	}
 
 	fmt.Println(path)
@@ -92,7 +92,7 @@ func ExtractMetadata(path string, n_th_file_in_dir int) (metadata, error) {
 	frame_identifier_name_map := getFrameIdentifierMap()
 	frame_identifier_list_to_parse := getFrameIdentifierSliceToParse()
 
-	data := metadata{}
+	data := Metadata{}
 	data.path = path
 
 	file_name := getFileName(path)
@@ -105,7 +105,7 @@ func ExtractMetadata(path string, n_th_file_in_dir int) (metadata, error) {
 		tag_data := make([]byte, tag_size)
 		_, err := io.ReadFull(f, tag_data)
 		if err != nil {
-			return metadata{}, err
+			return Metadata{}, err
 		}
 
 		frameHeaderSize := 10

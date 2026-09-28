@@ -14,34 +14,39 @@ func getAudioFileExtensions() []string {
 }
 
 func (mlc *MusicLibraryConfig) scanner() {
-	recursive_scanner(mlc.Songs_dir, "")
+	all_files_metadata := recursive_scanner(mlc.Songs_dir, "")
+	fmt.Println("-- TEST -- ", all_files_metadata)
+	fmt.Println(len(all_files_metadata))
 }
 
-func recursive_scanner(dir, spacer string) {
+func recursive_scanner(dir, spacer string) []tags.Metadata {
 	audio_file_extensions := getAudioFileExtensions()
 	files, _ := os.ReadDir(dir)
 	file_count := 0
 	music_file_count := 0
+	var result_data []tags.Metadata
 	for _, file := range files {
 		file_count += 1
 		if !file.IsDir() && slices.Contains(audio_file_extensions, strings.Split(file.Name(), ".")[len(strings.Split(file.Name(), "."))-1]) {
-			//fmt.Println(spacer, dir+"/"+file.Name()) //TODO this is an actual audio file need to do metadata extraction and then use that to build playlist
 			if file_count == 1 {
 				music_file_count += 1
 				metadata, err := tags.ExtractMetadata(dir+"/"+file.Name(), music_file_count)
 				if err != nil {
-					return
+					return []tags.Metadata{}
 				}
-				fmt.Printf("%+v\n", metadata)
+				//fmt.Printf("%+v\n", metadata)
+				result_data = append(result_data, metadata)
 			}
 		} else if file.IsDir() {
 			//fmt.Println(spacer, file.Name())
 			if string(file.Name()[0]) == "_" && strings.Contains(file.Name(), "_soundtracks") {
 				//TODO handle separately
 			} else {
-				recursive_scanner(dir+"/"+file.Name(), spacer+"   ")
+				data := recursive_scanner(dir+"/"+file.Name(), spacer+"   ")
+				result_data = append(result_data, data...)
 			}
 
 		}
 	}
+	return result_data
 }

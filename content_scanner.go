@@ -10,13 +10,14 @@ import (
 )
 
 func getAudioFileExtensions() []string {
-	return []string{"mp3", "flac"} //TODO need to map out more items
+	return []string{"mp3"} //TODO need to map out more filetypes when adding metadata extraction to them.
+	//return []string{"mp3", "flac"}
 }
 
-func (mlc *MusicLibraryConfig) scanner() {
+func (mlc *MusicLibraryConfig) scanner() []tags.Metadata {
 	all_files_metadata := recursive_scanner(mlc.Songs_dir, "")
-	fmt.Println("-- TEST -- ", all_files_metadata)
 	fmt.Println(len(all_files_metadata))
+	return all_files_metadata
 }
 
 func recursive_scanner(dir, spacer string) []tags.Metadata {

@@ -60,25 +60,25 @@ func getFrameIdentifierSliceToParse() []string {
 	return []string{"TIT2", "TPE1", "TALB", "TLEN", "TRCK"}
 }
 
-type metadata struct {
-	path      string
-	title     string
-	creator   string
-	album     string
-	duration  string
-	track_nbr string
+type Metadata struct {
+	Path      string
+	Title     string
+	Creator   string
+	Album     string
+	Duration  string
+	Track_nbr string
 }
 
-func ExtractMetadata(path string, n_th_file_in_dir int) (metadata, error) {
+func ExtractMetadata(path string, n_th_file_in_dir int) (Metadata, error) {
 	f, err := os.Open(filepath.Clean(path))
 	if err != nil {
-		return metadata{}, err
+		return Metadata{}, err
 	}
 	defer f.Close()
 
 	header := make([]byte, 10)
 	if _, err := io.ReadFull(f, header); err != nil {
-		return metadata{}, err
+		return Metadata{}, err
 	}
 
 	fmt.Println(path)
@@ -92,8 +92,8 @@ func ExtractMetadata(path string, n_th_file_in_dir int) (metadata, error) {
 	frame_identifier_name_map := getFrameIdentifierMap()
 	frame_identifier_list_to_parse := getFrameIdentifierSliceToParse()
 
-	data := metadata{}
-	data.path = path
+	data := Metadata{}
+	data.Path = path
 
 	file_name := getFileName(path)
 	fmt.Println(file_name)
@@ -105,7 +105,7 @@ func ExtractMetadata(path string, n_th_file_in_dir int) (metadata, error) {
 		tag_data := make([]byte, tag_size)
 		_, err := io.ReadFull(f, tag_data)
 		if err != nil {
-			return metadata{}, err
+			return Metadata{}, err
 		}
 
 		frameHeaderSize := 10
@@ -133,41 +133,41 @@ func ExtractMetadata(path string, n_th_file_in_dir int) (metadata, error) {
 
 				switch id {
 				case "TIT2":
-					data.title = decodeText(frame)
+					data.Title = decodeText(frame)
 				case "TPE1":
-					data.creator = decodeText(frame)
+					data.Creator = decodeText(frame)
 				case "TALB":
-					data.album = decodeText(frame)
+					data.Album = decodeText(frame)
 				case "TLEN":
-					data.duration = decodeText(frame)
+					data.Duration = decodeText(frame)
 				case "TRCK":
-					data.track_nbr = decodeText(frame)
+					data.Track_nbr = decodeText(frame)
 				}
 			}
 			pos += 10 + size
 		}
 	}
 
-	if data.title == "" {
-		data.title = getMetadataFromPath(path).song_name
+	if data.Title == "" {
+		data.Title = getMetadataFromPath(path).song_name
 	}
-	if data.creator == "" {
-		data.creator = getMetadataFromPath(path).artist_name
+	if data.Creator == "" {
+		data.Creator = getMetadataFromPath(path).artist_name
 	}
-	if data.album == "" {
-		data.album = getMetadataFromPath(path).album_name
+	if data.Album == "" {
+		data.Album = getMetadataFromPath(path).album_name
 	}
-	if data.duration == "" {
-		//TODO skipped, figure out later if we actually need value here, if needed then calculation based on track details is needed
+	if data.Duration == "" {
+		//TODO skipped, not required to have this field
 	}
-	if data.track_nbr == "" {
+	if data.Track_nbr == "" {
 		metadata_from_file := getMetadataFromPath(path)
 		//fmt.Printf("       no track number in frame, using value from file name: %s\n", metadata_from_file.track_number)
-		data.track_nbr = metadata_from_file.track_number
+		data.Track_nbr = metadata_from_file.track_number
 	}
-	if data.track_nbr == "" {
+	if data.Track_nbr == "" {
 		//fmt.Printf("       no track number in frame, nor in file name, using file count value: %d\n", n_th_file_in_dir)
-		data.track_nbr = strconv.Itoa(n_th_file_in_dir)
+		data.Track_nbr = strconv.Itoa(n_th_file_in_dir)
 	}
 
 	//fmt.Printf("%+v\n", data)

@@ -21,14 +21,13 @@ func (mlc *MusicLibraryConfig) scanner() []tags.Metadata {
 }
 
 func recursive_scanner(dir, spacer string) []tags.Metadata {
-	audio_file_extensions := getAudioFileExtensions()
 	files, _ := os.ReadDir(dir)
 	file_count := 0
 	music_file_count := 0
 	var result_data []tags.Metadata
 	for _, file := range files {
 		file_count += 1
-		if !file.IsDir() && slices.Contains(audio_file_extensions, strings.Split(file.Name(), ".")[len(strings.Split(file.Name(), "."))-1]) {
+		if !file.IsDir() && slices.Contains(getAudioFileExtensions(), strings.Split(file.Name(), ".")[len(strings.Split(file.Name(), "."))-1]) {
 			if file_count == 1 {
 				music_file_count += 1
 				metadata, err := tags.ExtractMetadata(dir+"/"+file.Name(), music_file_count)

@@ -2,6 +2,7 @@ package tags
 
 import (
 	"encoding/binary"
+	//"encoding/hex"
 	"fmt"
 	"io"
 	"os"
@@ -69,6 +70,13 @@ type Metadata struct {
 	Track_nbr string
 }
 
+type headerFlags struct {
+	unsynchronisation      bool
+	extended_header        bool
+	experimental_indicator bool
+	footer_present         bool
+}
+
 func ExtractMetadata(path string, n_th_file_in_dir int) (Metadata, error) {
 	f, err := os.Open(filepath.Clean(path))
 	if err != nil {
@@ -85,15 +93,17 @@ func ExtractMetadata(path string, n_th_file_in_dir int) (Metadata, error) {
 	fmt.Println("Header Data")
 	fmt.Println(header[0:10])
 
+	header_flags := getHeaderFlags(header[5])
+
 	tag_size := getCorrectTagSize(header[6:10])
 
 	fmt.Printf("file header type: %s --- and version: %d.%d --- flags: %08b and tag size of: %d, bytes: %d\n", string(header[0:3]), header[3], header[4], header[5], tag_size, header[6:10])
+	fmt.Printf("header flags: %+v\n", header_flags)
 
 	frame_identifier_name_map := getFrameIdentifierMap()
 	frame_identifier_list_to_parse := getFrameIdentifierSliceToParse()
 
 	data := Metadata{}
-	data.Path = path
 
 	file_name := getFileName(path)
 	fmt.Println(file_name)
@@ -101,6 +111,9 @@ func ExtractMetadata(path string, n_th_file_in_dir int) (Metadata, error) {
 	//fmt.Printf("%+v\n", metadata_from_file)
 
 	if int(header[3]) == 3 {
+
+		data.Path = path
+
 		fmt.Println("   ", "Frames Data")
 		tag_data := make([]byte, tag_size)
 		_, err := io.ReadFull(f, tag_data)
@@ -108,9 +121,14 @@ func ExtractMetadata(path string, n_th_file_in_dir int) (Metadata, error) {
 			return Metadata{}, err
 		}
 
+		//fmt.Println(len(tag_data))
+		//fmt.Println(hex.Dump(tag_data))
+		unsynchronize(tag_data)
+
 		frameHeaderSize := 10
 		for pos := 0; pos+frameHeaderSize <= len(tag_data); {
 			fmt.Println("   ", tag_data[pos:pos+10])
+			//fmt.Println("   ", hex.Dump(tag_data[pos:pos+10]))
 
 			id := string(tag_data[pos : pos+4])
 
@@ -129,6 +147,7 @@ func ExtractMetadata(path string, n_th_file_in_dir int) (Metadata, error) {
 			if slices.Contains(frame_identifier_list_to_parse, id) {
 				frame := tag_data[pos+10 : pos+10+size]
 				fmt.Println("        ", frame)
+				//fmt.Println("        ", hex.Dump(frame))
 				fmt.Printf("         %s: %v\n", frame_identifier_name_map[id], decodeText(frame))
 
 				switch id {
@@ -146,29 +165,31 @@ func ExtractMetadata(path string, n_th_file_in_dir int) (Metadata, error) {
 			}
 			pos += 10 + size
 		}
+
+		if data.Title == "" {
+			data.Title = getMetadataFromPath(path).song_name
+		}
+		if data.Creator == "" {
+			data.Creator = getMetadataFromPath(path).artist_name
+		}
+		if data.Album == "" {
+			data.Album = getMetadataFromPath(path).album_name
+		}
+		if data.Duration == "" {
+			//TODO skipped, not required to have this field
+		}
+		if data.Track_nbr == "" {
+			metadata_from_file := getMetadataFromPath(path)
+			//fmt.Printf("       no track number in frame, using value from file name: %s\n", metadata_from_file.track_number)
+			data.Track_nbr = metadata_from_file.track_number
+		}
+		if data.Track_nbr == "" {
+			//fmt.Printf("       no track number in frame, nor in file name, using file count value: %d\n", n_th_file_in_dir)
+			data.Track_nbr = strconv.Itoa(n_th_file_in_dir)
+		}
 	}
 
-	if data.Title == "" {
-		data.Title = getMetadataFromPath(path).song_name
-	}
-	if data.Creator == "" {
-		data.Creator = getMetadataFromPath(path).artist_name
-	}
-	if data.Album == "" {
-		data.Album = getMetadataFromPath(path).album_name
-	}
-	if data.Duration == "" {
-		//TODO skipped, not required to have this field
-	}
-	if data.Track_nbr == "" {
-		metadata_from_file := getMetadataFromPath(path)
-		//fmt.Printf("       no track number in frame, using value from file name: %s\n", metadata_from_file.track_number)
-		data.Track_nbr = metadata_from_file.track_number
-	}
-	if data.Track_nbr == "" {
-		//fmt.Printf("       no track number in frame, nor in file name, using file count value: %d\n", n_th_file_in_dir)
-		data.Track_nbr = strconv.Itoa(n_th_file_in_dir)
-	}
+
 
 	//fmt.Printf("%+v\n", data)
 	return data, nil
@@ -182,6 +203,49 @@ func getCorrectTagSize(b []byte) int {
 	//fmt.Printf("%d, %08b", full_data, full_data)
 
 	return full_data
+}
+
+func getHeaderFlags(b byte) headerFlags {
+	h_flags := headerFlags{
+		unsynchronisation:      false,
+		extended_header:        false,
+		experimental_indicator: false,
+		footer_present:         false,
+	}
+	for i := 7; i >= 4; i-- {
+		value := (b >> i) & 1
+		switch i {
+		case 7:
+			if value == 1 {
+				h_flags.unsynchronisation = true
+			}
+		case 6:
+			if value == 1 {
+				h_flags.extended_header = true
+			}
+		case 5:
+			if value == 1 {
+				h_flags.experimental_indicator = true
+			}
+		case 4:
+			if value == 1 {
+				h_flags.footer_present = true
+			}
+		}
+	}
+	return h_flags
+}
+
+func unsynchronize(b []byte) []byte {
+	result := make([]byte, len(b))
+	for i := 0; i < len(b); i++ {
+		//fmt.Printf("%02X ", b[i])
+		result = append(result, b[i])
+		if b[i] == 0xFF && i+1 < len(b) && b[i+1] == 0x00 {
+			i++
+		}
+	}
+	return result
 }
 
 func getFileName(path string) string {

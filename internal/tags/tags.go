@@ -1,16 +1,11 @@
 package tags
 
 import (
-	"encoding/binary"
-	//"encoding/hex"
 	"fmt"
 	"io"
 	"os"
 	"path/filepath"
-	"slices"
-	"strconv"
 	"strings"
-	"unicode/utf16"
 )
 
 func getFrameIdentifierMap() map[string]string {
@@ -70,6 +65,14 @@ type Metadata struct {
 	Track_nbr string
 }
 
+type headerDetails struct {
+	identifier string
+	version    int
+	revision   int
+	flags      headerFlags
+	size       int
+}
+
 type headerFlags struct {
 	unsynchronisation      bool
 	extended_header        bool
@@ -77,122 +80,76 @@ type headerFlags struct {
 	footer_present         bool
 }
 
-func ExtractMetadata(path string, n_th_file_in_dir int) (Metadata, error) {
+func ExtractMetadata(path string, n_th_file_in_dir int, file_type string) (Metadata, error) {
 	f, err := os.Open(filepath.Clean(path))
 	if err != nil {
 		return Metadata{}, err
 	}
 	defer f.Close()
 
-	header := make([]byte, 10)
-	if _, err := io.ReadFull(f, header); err != nil {
-		return Metadata{}, err
-	}
-
 	fmt.Println(path)
-	fmt.Println("Header Data")
-	fmt.Println(header[0:10])
-
-	header_flags := getHeaderFlags(header[5])
-
-	tag_size := getCorrectTagSize(header[6:10])
-
-	fmt.Printf("file header type: %s --- and version: %d.%d --- flags: %08b and tag size of: %d, bytes: %d\n", string(header[0:3]), header[3], header[4], header[5], tag_size, header[6:10])
-	fmt.Printf("header flags: %+v\n", header_flags)
-
-	frame_identifier_name_map := getFrameIdentifierMap()
-	frame_identifier_list_to_parse := getFrameIdentifierSliceToParse()
-
-	data := Metadata{}
-
 	file_name := getFileName(path)
 	fmt.Println(file_name)
-	//metadata_from_file := getMetadataFromPath(path)
-	//fmt.Printf("%+v\n", metadata_from_file)
 
-	if int(header[3]) == 3 {
+	data := Metadata{}
+	data.Path = path
 
-		data.Path = path
-
-		fmt.Println("   ", "Frames Data")
-		tag_data := make([]byte, tag_size)
-		_, err := io.ReadFull(f, tag_data)
-		if err != nil {
+	switch file_type {
+	case "mp3":
+		header := make([]byte, 10)
+		if _, err := io.ReadFull(f, header); err != nil {
 			return Metadata{}, err
 		}
 
-		//fmt.Println(len(tag_data))
-		//fmt.Println(hex.Dump(tag_data))
-		unsynchronize(tag_data)
+		fmt.Println("Header Data")
+		fmt.Println(header[0:10])
 
-		frameHeaderSize := 10
-		for pos := 0; pos+frameHeaderSize <= len(tag_data); {
-			fmt.Println("   ", tag_data[pos:pos+10])
-			//fmt.Println("   ", hex.Dump(tag_data[pos:pos+10]))
+		header_deatils := getHeaderDetails(header[0:10])
 
-			id := string(tag_data[pos : pos+4])
+		fmt.Printf("file header type: %s --- and version: %d.%d --- flags: %+v and tag size of: %d\n", header_deatils.identifier, header_deatils.version, header_deatils.revision, header_deatils.flags, header_deatils.size)
 
-			//stop after final tag item
-			if id == "\x00\x00\x00\x00" {
-				fmt.Println("   ", " --- no more data")
-				break
+		switch header_deatils.version {
+		case 2:
+			//TODO
+			//function call here
+		case 3:
+			err := data.extract_mp3id3v23(&header_deatils, f)
+			if err != nil {
+				return Metadata{}, err
 			}
-
-			size := int(binary.BigEndian.Uint32(tag_data[pos+4 : pos+8]))
-			if size <= 0 || pos+10+size > len(tag_data) {
-				break
-			}
-
-			fmt.Printf("    frame header id: %s --- and size of: %d, bytes: %d --- flags data: %08b\n", id, size, tag_data[pos+4:pos+8], tag_data[pos+8:pos+10])
-			if slices.Contains(frame_identifier_list_to_parse, id) {
-				frame := tag_data[pos+10 : pos+10+size]
-				fmt.Println("        ", frame)
-				//fmt.Println("        ", hex.Dump(frame))
-				fmt.Printf("         %s: %v\n", frame_identifier_name_map[id], decodeText(frame))
-
-				switch id {
-				case "TIT2":
-					data.Title = decodeText(frame)
-				case "TPE1":
-					data.Creator = decodeText(frame)
-				case "TALB":
-					data.Album = decodeText(frame)
-				case "TLEN":
-					data.Duration = decodeText(frame)
-				case "TRCK":
-					data.Track_nbr = decodeText(frame)
-				}
-			}
-			pos += 10 + size
+		case 4:
+			//TODO
+			//function call here
+		default:
+			return Metadata{}, fmt.Errorf("not a valid mp3 ID3 version value: '%d.%d'", header_deatils.version, header_deatils.revision)
 		}
 
-		if data.Title == "" {
-			data.Title = getMetadataFromPath(path).song_name
-		}
-		if data.Creator == "" {
-			data.Creator = getMetadataFromPath(path).artist_name
-		}
-		if data.Album == "" {
-			data.Album = getMetadataFromPath(path).album_name
-		}
-		if data.Duration == "" {
-			//TODO skipped, not required to have this field
-		}
-		if data.Track_nbr == "" {
-			metadata_from_file := getMetadataFromPath(path)
-			//fmt.Printf("       no track number in frame, using value from file name: %s\n", metadata_from_file.track_number)
-			data.Track_nbr = metadata_from_file.track_number
-		}
-		if data.Track_nbr == "" {
-			//fmt.Printf("       no track number in frame, nor in file name, using file count value: %d\n", n_th_file_in_dir)
-			data.Track_nbr = strconv.Itoa(n_th_file_in_dir)
-		}
+	case "flac":
+		//TODO
+		//code here
+
+	default:
+		return Metadata{}, fmt.Errorf("not a valid file for parsing: '%s'", file_name)
 	}
 
-
+	//data.fillFromPath(path, strconv.Itoa(n_th_file_in_dir)) //TODO enable following once we have all types of metadata collections implemented, this is only backup when we have no more data to find
 
 	//fmt.Printf("%+v\n", data)
 	return data, nil
+}
+
+func getHeaderDetails(b []byte) headerDetails {
+	result_data := headerDetails{}
+
+	result_data.identifier = string(b[0:3])
+	result_data.version = int(b[3])
+	result_data.revision = int(b[4])
+	result_data.flags = getHeaderFlags(b[5])
+	result_data.size = getCorrectTagSize(b[6:10])
+
+	//fmt.Printf("header struct: %+v\n", result_data)
+
+	return result_data
 }
 
 func getCorrectTagSize(b []byte) int {
@@ -236,162 +193,31 @@ func getHeaderFlags(b byte) headerFlags {
 	return h_flags
 }
 
-func unsynchronize(b []byte) []byte {
-	result := make([]byte, len(b))
-	for i := 0; i < len(b); i++ {
-		//fmt.Printf("%02X ", b[i])
-		result = append(result, b[i])
-		if b[i] == 0xFF && i+1 < len(b) && b[i+1] == 0x00 {
-			i++
-		}
-	}
-	return result
-}
-
 func getFileName(path string) string {
 	i := strings.LastIndex(path, "/")
 	return path[i+1:]
 }
 
-type path_metadata struct {
-	song_name    string
-	album_name   string
-	artist_name  string
-	track_number string
-}
-
-func getMetadataFromPath(path string) path_metadata {
-	var result_data path_metadata
-
-	parts := strings.Split(path, "/")
-	parts_len := len(parts)
-
-	for i := parts_len - 1; i >= 0; i-- {
-		switch i {
-		case parts_len - 1:
-			var album_name_from_file string
-			var artist_name_from_file string
-
-			file_name_parts := strings.Split(parts[i], "-")
-
-			switch len(file_name_parts) {
-			case 1:
-				if isNumeric(file_name_parts[0][:2]) {
-					result_data.track_number = file_name_parts[0][:2]
-					result_data.song_name = strings.TrimSpace(strings.Split(file_name_parts[0][2:], ".")[0])
-				} else {
-					result_data.song_name = strings.Split(file_name_parts[0], ".")[0]
-				}
-			case 2:
-				album_name_from_file = strings.TrimSpace(file_name_parts[0])
-				potential_song_name := strings.TrimSpace(strings.Split(file_name_parts[1], ".")[0])
-				if isNumeric(potential_song_name[:2]) {
-					result_data.track_number = potential_song_name[:2]
-					result_data.song_name = potential_song_name[3:]
-				} else {
-					result_data.song_name = potential_song_name
-				}
-			case 3:
-				artist_name_from_file = strings.TrimSpace(file_name_parts[0])
-				album_name_from_file = strings.TrimSpace(file_name_parts[1])
-				potential_song_name := strings.TrimSpace(strings.Split(file_name_parts[2], ".")[0])
-				if isNumeric(potential_song_name[:2]) {
-					result_data.track_number = potential_song_name[:2]
-					result_data.song_name = potential_song_name[3:]
-				} else {
-					result_data.song_name = potential_song_name
-				}
-			}
-			result_data.album_name = album_name_from_file
-			result_data.artist_name = artist_name_from_file
-
-		case parts_len - 2:
-			if result_data.album_name == "" {
-				parts_from_dir := strings.Split(parts[i], "-")
-
-				switch len(parts_from_dir) {
-				case 1:
-					result_data.album_name = parts[i]
-				case 2:
-					result_data.artist_name = strings.TrimSpace(parts_from_dir[0])
-					result_data.album_name = strings.TrimSpace(parts_from_dir[1])
-				}
-			}
-
-		case parts_len - 3:
-			if parts[i] == "all_songs" {
-				break
-			}
-			if result_data.artist_name == "" {
-				result_data.artist_name = parts[i]
-			}
-		}
+func (m *Metadata) fillFromPath(n_th_file_in_dir string) {
+	if m.Title == "" {
+		m.Title = m.getMetadataFromPath().song_name
 	}
-	return result_data
-}
-
-func isNumeric(input any) bool {
-	if _, ok := input.(int); ok {
-		return true
+	if m.Creator == "" {
+		m.Creator = m.getMetadataFromPath().artist_name
 	}
-	if data, ok := input.(string); ok {
-		_, err := strconv.Atoi(data)
-		if err == nil {
-			return true
-		}
+	if m.Album == "" {
+		m.Album = m.getMetadataFromPath().album_name
 	}
-	return false
-}
-
-func decodeText(data []byte) string {
-	encoding := data[0]
-	//fmt.Println(encoding)
-
-	data = data[1:]
-
-	switch encoding {
-	case 0x00:
-		// ISO-8859-1.
-		runes := make([]rune, len(data))
-		for i, b := range data {
-			runes[i] = rune(b)
-		}
-		return strings.TrimRight(string(runes), "\x00")
-	case 0x01:
-		// UTF-16 with BOM.
-		if len(data) < 2 {
-			return ""
-		}
-
-		littleEndian := data[0] == 0xff && data[1] == 0xfe
-		data = data[2:]
-
-		return decodeUTF16(data, littleEndian)
-	case 0x02:
-		// UTF-16BE.
-		return decodeUTF16(data, false)
-	case 0x03:
-		// UTF-8.
-		return strings.TrimRight(string(data), "\x00")
-	default:
-		return ""
+	if m.Duration == "" {
+		//TODO skipped, not required to have this field
 	}
-}
-
-func decodeUTF16(data []byte, littleEndian bool) string {
-	if len(data)%2 != 0 {
-		data = data[:len(data)-1]
+	if m.Track_nbr == "" {
+		metadata_from_file := m.getMetadataFromPath()
+		//fmt.Printf("       no track number in frame, using value from file name: %s\n", metadata_from_file.track_number)
+		m.Track_nbr = metadata_from_file.track_number
 	}
-
-	u16 := make([]uint16, len(data)/2)
-
-	for i := range u16 {
-		if littleEndian {
-			u16[i] = binary.LittleEndian.Uint16(data[i*2:])
-		} else {
-			u16[i] = binary.BigEndian.Uint16(data[i*2:])
-		}
+	if m.Track_nbr == "" {
+		//fmt.Printf("       no track number in frame, nor in file name, using file count value: %d\n", n_th_file_in_dir)
+		m.Track_nbr = n_th_file_in_dir
 	}
-
-	return strings.TrimRight(string(utf16.Decode(u16)), "\x00")
 }

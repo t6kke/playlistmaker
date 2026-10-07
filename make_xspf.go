@@ -2,7 +2,6 @@ package main
 
 import (
 	"encoding/xml"
-	"fmt"
 	"os"
 	"path/filepath"
 
@@ -60,7 +59,6 @@ func (mlc *MusicLibraryConfig) createAllSongsPL(all_songs []tags.Metadata) error
 	encoder := xml.NewEncoder(file)
 	encoder.Indent("", "  ")
 
-	fmt.Print(xml.Header)
 	_, err = file.WriteString(xml.Header)
 	if err != nil {
 		return err

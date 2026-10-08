@@ -69,7 +69,7 @@ func (m *Metadata) extract_mp3id3v23(header_details *headerDetails, f *os.File) 
 }
 
 func unsynchronize(b []byte) []byte {
-	result := make([]byte, len(b))
+	result := make([]byte, 0)
 	for i := 0; i < len(b); i++ {
 		//fmt.Printf("%02X ", b[i])
 		result = append(result, b[i])

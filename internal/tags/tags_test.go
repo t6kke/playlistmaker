@@ -4,33 +4,71 @@ import "testing"
 
 func Test_ExtractMetadata_Errors(t *testing.T) {
 	tests := []struct {
-		name    string
-		path    string
-		result  Metadata
-		wantErr bool
+		name      string
+		path      string
+		file_type string
+		result    Metadata
+		wantErr   bool
 	}{
 		{
-			name:    "Invalid Path -- Output error",
-			path:    "dummy",
-			result:  Metadata{},
-			wantErr: true,
+			name:      "Invalid Path -- Output error",
+			path:      "dummy",
+			file_type: "mp3",
+			result:    Metadata{},
+			wantErr:   true,
 		},
 		{
-			name:    "Invalid Path -- Output error",
-			path:    "/home/user/Music/music.mp3",
-			result:  Metadata{},
-			wantErr: true,
+			name:      "Invalid Path -- Output error",
+			path:      "/home/user/Music/music.mp3",
+			file_type: "mp3",
+			result:    Metadata{},
+			wantErr:   true,
+		},
+		{
+			name:      "Invalid file type -- Output error",
+			path:      "/home/user/Music/music.mp3",
+			file_type: "png",
+			result:    Metadata{},
+			wantErr:   true,
 		},
 	}
 
 	for i, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			metadata, err := ExtractMetadata(tt.path, 1)
+			metadata, err := ExtractMetadata(tt.path, 1, tt.file_type)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("Test %d --- %s\nFUCN: ExtractMetadata() --- error = '%v', wantErr = '%v'", i+1, tt.name, err, tt.wantErr)
 			}
 			if metadata != tt.result {
 				t.Errorf("Test %d --- %s\nFUCN: ExtractMetadata() --- metadat = %v, wantErr = %v", i+1, tt.name, metadata, tt.result)
+			}
+		})
+	}
+}
+
+func Test_getHeaderDetails(t *testing.T) {
+	tests := []struct {
+		name  string
+		bytes []byte
+		want  headerDetails
+	}{
+		{
+			name:  "Correct name extraction",
+			bytes: []byte{73, 68, 51, 4, 0, 128, 0, 0, 17, 45},
+			want:  headerDetails{identifier: "ID3", version: 4, revision: 0, flags: headerFlags{unsynchronisation: true, extended_header: false, experimental_indicator: false, footer_present: false}, size: 2221},
+		},
+		{
+			name:  "Correct name extraction",
+			bytes: []byte{73, 68, 51, 3, 0, 0, 0, 3, 22, 100},
+			want:  headerDetails{identifier: "ID3", version: 3, revision: 0, flags: headerFlags{unsynchronisation: false, extended_header: false, experimental_indicator: false, footer_present: false}, size: 52068},
+		},
+	}
+
+	for i, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			header_info := getHeaderDetails(tt.bytes)
+			if header_info != tt.want {
+				t.Errorf("Test %d --- %s\nFUCN: getHeaderDetails() --- expected = '%+v', got = '%+v'", i+1, tt.name, tt.want, header_info)
 			}
 		})
 	}
@@ -50,7 +88,7 @@ func Test_getCorrectTagSize(t *testing.T) {
 			wantErr: false,
 		},
 		{
-			name:    "Falze bytes calculation",
+			name:    "False bytes calculation",
 			bytes:   []byte{0, 3, 22, 100},
 			want:    1,
 			wantErr: true,
@@ -93,106 +131,6 @@ func Test_getFileName(t *testing.T) {
 			file_name := getFileName(tt.path)
 			if (file_name != tt.want) != tt.wantErr {
 				t.Errorf("Test %d --- %s\nFUCN: getFileName() --- expected = '%v', got = '%v'", i+1, tt.name, tt.want, file_name)
-			}
-		})
-	}
-}
-
-func Test_getMetadataFromPath(t *testing.T) {
-	tests := []struct {
-		name  string
-		input string
-		want  path_metadata
-	}{
-		{
-			name:  "Standard extraction from path",
-			input: "/home/user/Music/all_songs/artist_name/album_name/song_name.mp3",
-			want:  path_metadata{song_name: "song_name", album_name: "album_name", artist_name: "artist_name", track_number: ""},
-		},
-		{
-			name:  "Standard with added track number",
-			input: "/home/user/Music/all_songs/artist_name/album_name/03 song_name.mp3",
-			want:  path_metadata{song_name: "song_name", album_name: "album_name", artist_name: "artist_name", track_number: "03"},
-		},
-		{
-			name:  "Standard with added track number without space in the file name",
-			input: "/home/user/Music/all_songs/artist_name/album_name/03song_name.mp3",
-			want:  path_metadata{song_name: "song_name", album_name: "album_name", artist_name: "artist_name", track_number: "03"},
-		},
-		{
-			name:  "Only artist directory",
-			input: "/home/user/Music/all_songs/album_name/song_name.mp3",
-			want:  path_metadata{song_name: "song_name", album_name: "album_name", artist_name: "", track_number: ""},
-		},
-		{
-			name:  "Album name from the file name",
-			input: "/home/user/Music/all_songs/artist_name/album_name/album - song_name.mp3",
-			want:  path_metadata{song_name: "song_name", album_name: "album", artist_name: "artist_name", track_number: ""},
-		},
-		{
-			name:  "Album and artist name from the file name",
-			input: "/home/user/Music/all_songs/artist_name/album_name/artist - album - song_name.mp3",
-			want:  path_metadata{song_name: "song_name", album_name: "album", artist_name: "artist", track_number: ""},
-		},
-		{
-			name:  "Album, artist and track number from the file name",
-			input: "/home/user/Music/all_songs/artist_name/album_name/artist - album - 03 song_name.mp3",
-			want:  path_metadata{song_name: "song_name", album_name: "album", artist_name: "artist", track_number: "03"},
-		},
-		{
-			name:  "Album, artist and track number from the file name, artist in the album dir name",
-			input: "/home/user/Music/all_songs/artist_name/artist_nm - album_nm/artist - album - 03 song_name.mp3",
-			want:  path_metadata{song_name: "song_name", album_name: "album", artist_name: "artist", track_number: "03"},
-		},
-		{
-			name:  "Album, artist and track number from drectory",
-			input: "/home/user/Music/all_songs/artist_name/artist_nm - album_nm/song_name.mp3",
-			want:  path_metadata{song_name: "song_name", album_name: "album_nm", artist_name: "artist_nm", track_number: ""},
-		},
-	}
-
-	for i, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			metadata := getMetadataFromPath(tt.input)
-			if metadata != tt.want {
-				t.Errorf("Test %d --- %s\nFUCN: getMetadataFromPath() --- expected = '%+v', got = '%+v'", i+1, tt.name, tt.want, metadata)
-			}
-		})
-	}
-}
-
-func Test_isNumeric(t *testing.T) {
-	tests := []struct {
-		name    string
-		input   any
-		want    bool
-		wantErr bool
-	}{
-		{
-			name:    "Is valid number based on int",
-			input:   01,
-			want:    true,
-			wantErr: false,
-		},
-		{
-			name:    "Is valid number based on string",
-			input:   "01",
-			want:    true,
-			wantErr: false,
-		},
-		{
-			name:    "Is valid number based on string",
-			input:   "Aa",
-			want:    false,
-			wantErr: false,
-		},
-	}
-
-	for i, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			result := isNumeric(tt.input)
-			if (result != tt.want) != tt.wantErr {
-				t.Errorf("Test %d --- %s\nFUCN: isNumeric() --- expected = '%v', got = '%v'", i+1, tt.name, tt.want, result)
 			}
 		})
 	}

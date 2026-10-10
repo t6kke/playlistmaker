@@ -71,6 +71,7 @@ type headerDetails struct {
 	revision   int
 	flags      headerFlags
 	size       int
+	crc        bool
 }
 
 type headerFlags struct {

@@ -76,29 +76,51 @@ func Test_getHeaderDetails(t *testing.T) {
 
 func Test_getCorrectTagSize(t *testing.T) {
 	tests := []struct {
-		name    string
-		bytes   []byte
-		want    int
-		wantErr bool
+		name  string
+		bytes []byte
+		want  int
 	}{
 		{
-			name:    "Accurate bytes calculation",
-			bytes:   []byte{0, 3, 22, 100},
-			want:    52068,
-			wantErr: false,
+			name:  "Accurate bytes calculation",
+			bytes: []byte{0, 3, 22, 100},
+			want:  52068,
 		},
 		{
-			name:    "False bytes calculation",
-			bytes:   []byte{0, 3, 22, 100},
-			want:    1,
-			wantErr: true,
+			name:  "Accurate bytes calculation",
+			bytes: []byte{0, 0, 17, 45},
+			want:  2221,
+		},
+		{
+			name:  "Accurate bytes calculation",
+			bytes: []byte{0, 7, 88, 00},
+			want:  125952,
+		},
+		{
+			name:  "Accurate bytes calculation",
+			bytes: []byte{0, 28, 10, 58},
+			want:  460090,
+		},
+		{
+			name:  "Accurate bytes calculation",
+			bytes: []byte{0, 0, 1, 14},
+			want:  142,
+		},
+		{
+			name:  "Accurate bytes calculation",
+			bytes: []byte{4, 0, 11, 20},
+			want:  8390036,
+		},
+		{
+			name:  "Accurate bytes calculation, size zero",
+			bytes: []byte{0, 0, 0, 0},
+			want:  0,
 		},
 	}
 
 	for i, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			size := getCorrectTagSize(tt.bytes)
-			if (size != tt.want) != tt.wantErr {
+			if size != tt.want {
 				t.Errorf("Test %d --- %s\nFUCN: getCorrectTagSize() --- expected = '%v', got = '%v'", i+1, tt.name, tt.want, size)
 			}
 		})
@@ -107,29 +129,26 @@ func Test_getCorrectTagSize(t *testing.T) {
 
 func Test_getFileName(t *testing.T) {
 	tests := []struct {
-		name    string
-		path    string
-		want    string
-		wantErr bool
+		name string
+		path string
+		want string
 	}{
 		{
-			name:    "Correct name extraction",
-			path:    "/home/user/Music/music.mp3",
-			want:    "music.mp3",
-			wantErr: false,
+			name: "Correct name extraction",
+			path: "/home/user/Music/music.mp3",
+			want: "music.mp3",
 		},
 		{
-			name:    "Correct name extraction",
-			path:    "/home/user/Music/artist - album - song.mp3",
-			want:    "artist - album - song.mp3",
-			wantErr: false,
+			name: "Correct name extraction",
+			path: "/home/user/Music/artist - album - song.mp3",
+			want: "artist - album - song.mp3",
 		},
 	}
 
 	for i, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			file_name := getFileName(tt.path)
-			if (file_name != tt.want) != tt.wantErr {
+			if file_name != tt.want {
 				t.Errorf("Test %d --- %s\nFUCN: getFileName() --- expected = '%v', got = '%v'", i+1, tt.name, tt.want, file_name)
 			}
 		})

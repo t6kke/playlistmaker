@@ -67,35 +67,31 @@ func Test_getMetadataFromPath(t *testing.T) {
 
 func Test_isNumeric(t *testing.T) {
 	tests := []struct {
-		name    string
-		input   any
-		want    bool
-		wantErr bool
+		name  string
+		input any
+		want  bool
 	}{
 		{
-			name:    "Is valid number based on int",
-			input:   01,
-			want:    true,
-			wantErr: false,
+			name:  "Is valid number based on int",
+			input: 01,
+			want:  true,
 		},
 		{
-			name:    "Is valid number based on string",
-			input:   "01",
-			want:    true,
-			wantErr: false,
+			name:  "Is valid number based on string",
+			input: "01",
+			want:  true,
 		},
 		{
-			name:    "Is valid number based on string",
-			input:   "Aa",
-			want:    false,
-			wantErr: false,
+			name:  "Is valid number based on string",
+			input: "Aa",
+			want:  false,
 		},
 	}
 
 	for i, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			result := isNumeric(tt.input)
-			if (result != tt.want) != tt.wantErr {
+			if result != tt.want {
 				t.Errorf("Test %d --- %s\nFUCN: isNumeric() --- expected = '%v', got = '%v'", i+1, tt.name, tt.want, result)
 			}
 		})

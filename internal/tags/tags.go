@@ -121,9 +121,11 @@ func ExtractMetadata(path string, n_th_file_in_dir int, file_type string) (Metad
 				return Metadata{}, err
 			}
 		case 4:
-			//TODO
 			fmt.Println("   ", "mp3 id3 v2.4")
-			//function call here
+			err := data.extract_mp3id3v24(&header_deatils, f)
+			if err != nil {
+				return Metadata{}, err
+			}
 		default:
 			return Metadata{}, fmt.Errorf("not a valid mp3 ID3 version value: '%d.%d'", header_deatils.version, header_deatils.revision)
 		}
@@ -136,7 +138,11 @@ func ExtractMetadata(path string, n_th_file_in_dir int, file_type string) (Metad
 		return Metadata{}, fmt.Errorf("not a valid file for parsing: '%s'", file_name)
 	}
 
-	//data.fillFromPath(path, strconv.Itoa(n_th_file_in_dir)) //TODO enable following once we have all types of metadata collections implemented, this is only backup when we have no more data to find
+	//TODO
+	// this is for backup when metadata is missing or partial from the file.
+	// 1. try some web API to search for the track to get metadata from web.
+	// 2. use the path details for missing metadata, enable the existing function that is prepared.
+	//data.fillFromPath(path, strconv.Itoa(n_th_file_in_dir))
 
 	//fmt.Printf("%+v\n", data)
 	return data, nil
@@ -156,6 +162,7 @@ func getHeaderDetails(b []byte) headerDetails {
 	return result_data
 }
 
+//TODO find a better location for this function
 func getCorrectTagSize(b []byte) int {
 	//TODO validate lenght of bytes slice and return error if it's not 4
 

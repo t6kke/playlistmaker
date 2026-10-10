@@ -27,7 +27,6 @@ func (m *Metadata) extract_mp3id3v23(header_details *headerDetails, f *os.File) 
 		header_details.crc = extended_flags&0x8000 != 0 //CRC is used for checksum of flags data
 
 		extended_header_size = 4 + size
-		//TODO handle extended header
 	}
 
 	//fmt.Println(len(tag_data))
@@ -53,6 +52,8 @@ func (m *Metadata) extract_mp3id3v23(header_details *headerDetails, f *os.File) 
 		}
 
 		fmt.Printf("    frame header id: %s --- and size of: %d, bytes: %d --- flags data: %08b\n", id, size, tag_data[pos+4:pos+8], tag_data[pos+8:pos+10])
+		//TODO deal with frame header flags
+
 		if slices.Contains(frame_identifier_list_to_parse, id) {
 			frame := tag_data[pos+10 : pos+10+size]
 			fmt.Println("        ", frame)
@@ -78,6 +79,7 @@ func (m *Metadata) extract_mp3id3v23(header_details *headerDetails, f *os.File) 
 	return nil
 }
 
+//TODO find a better location for this function
 func unsynchronize(b []byte) []byte {
 	result := make([]byte, 0)
 	for i := 0; i < len(b); i++ {

@@ -112,14 +112,17 @@ func ExtractMetadata(path string, n_th_file_in_dir int, file_type string) (Metad
 		switch header_deatils.version {
 		case 2:
 			//TODO
+			fmt.Println("   ", "mp3 id3 v2.2")
 			//function call here
 		case 3:
+			fmt.Println("   ", "mp3 id3 v2.3")
 			err := data.extract_mp3id3v23(&header_deatils, f)
 			if err != nil {
 				return Metadata{}, err
 			}
 		case 4:
 			//TODO
+			fmt.Println("   ", "mp3 id3 v2.4")
 			//function call here
 		default:
 			return Metadata{}, fmt.Errorf("not a valid mp3 ID3 version value: '%d.%d'", header_deatils.version, header_deatils.revision)

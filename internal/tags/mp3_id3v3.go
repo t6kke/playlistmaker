@@ -22,8 +22,6 @@ func (m *Metadata) extract_mp3id3v23(header_details *headerDetails, f *os.File) 
 
 	extended_header_size := 0
 	if header_details.flags.extended_header {
-		fmt.Println("EXTENDED HEADER")
-
 		size := int(binary.BigEndian.Uint32(tag_data[10:15]))
 		extended_flags := binary.BigEndian.Uint16(tag_data[15:17])
 		header_details.crc = extended_flags&0x8000 != 0 //CRC is used for checksum of flags data

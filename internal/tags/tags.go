@@ -162,7 +162,7 @@ func getHeaderDetails(b []byte) headerDetails {
 	return result_data
 }
 
-//TODO find a better location for this function
+// TODO find a better location for this function
 func getCorrectTagSize(b []byte) int {
 	//TODO validate lenght of bytes slice and return error if it's not 4
 
@@ -174,34 +174,12 @@ func getCorrectTagSize(b []byte) int {
 }
 
 func getHeaderFlags(b byte) headerFlags {
-	h_flags := headerFlags{
-		unsynchronisation:      false,
-		extended_header:        false,
-		experimental_indicator: false,
-		footer_present:         false,
+	return headerFlags{
+		unsynchronisation:      b&0b10000000 != 0,
+		extended_header:        b&0b01000000 != 0,
+		experimental_indicator: b&0b00100000 != 0,
+		footer_present:         b&0b00010000 != 0,
 	}
-	for i := 7; i >= 4; i-- {
-		value := (b >> i) & 1
-		switch i {
-		case 7:
-			if value == 1 {
-				h_flags.unsynchronisation = true
-			}
-		case 6:
-			if value == 1 {
-				h_flags.extended_header = true
-			}
-		case 5:
-			if value == 1 {
-				h_flags.experimental_indicator = true
-			}
-		case 4:
-			if value == 1 {
-				h_flags.footer_present = true
-			}
-		}
-	}
-	return h_flags
 }
 
 func getFileName(path string) string {

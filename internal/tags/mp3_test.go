@@ -9,6 +9,18 @@ func Test_extract_mp3id3v23(t *testing.T) {
 	//TODO
 }
 
+func Test_getFrameFlags_v3(t *testing.T) {
+	//TODO
+}
+
+func Test_extract_mp3id3v24(t *testing.T) {
+	//TODO
+}
+
+func Test_getFrameFlags_v4(t *testing.T) {
+	//TODO
+}
+
 func Test_unsynchronize(t *testing.T) {
 	tests := []struct {
 		name  string
@@ -49,9 +61,9 @@ func Test_unsynchronize(t *testing.T) {
 
 	for i, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			output := unsynchronize(tt.input)
-			if !bytes.Equal(output, tt.want) {
-				t.Errorf("Test %d --- %s\nFUCN: unsynchronize() --- expected = '%02X', got = '%02X'", i+1, tt.name, tt.want, output)
+			unsynchronize(&tt.input)
+			if !bytes.Equal(tt.input, tt.want) {
+				t.Errorf("Test %d --- %s\nFUCN: unsynchronize() --- expected = '%02X', got = '%02X'", i+1, tt.name, tt.want, tt.input)
 			}
 		})
 	}

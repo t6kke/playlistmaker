@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"slices"
+	"strings"
 )
 
 /*
@@ -93,6 +94,9 @@ func (m *Metadata) extract_mp3id3v23(header_details *headerDetails, f *os.File) 
 				m.Duration = decodeText(frame)
 			case "TRCK":
 				m.Track_nbr = decodeText(frame)
+				if strings.Contains(m.Track_nbr, "/") {
+					m.Track_nbr = strings.Split(m.Track_nbr, "/")[0]
+				}
 			}
 		}
 		pos += 10 + size
@@ -213,6 +217,9 @@ func (m *Metadata) extract_mp3id3v24(header_details *headerDetails, f *os.File) 
 				m.Duration = decodeText(frame)
 			case "TRCK":
 				m.Track_nbr = decodeText(frame)
+				if strings.Contains(m.Track_nbr, "/") {
+					m.Track_nbr = strings.Split(m.Track_nbr, "/")[0]
+				}
 			}
 		}
 		pos += 10 + size

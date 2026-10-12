@@ -5,6 +5,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 )
 
@@ -142,7 +143,7 @@ func ExtractMetadata(path string, n_th_file_in_dir int, file_type string) (Metad
 	// this is for backup when metadata is missing or partial from the file.
 	// 1. try some web API to search for the track to get metadata from web.
 	// 2. use the path details for missing metadata, enable the existing function that is prepared.
-	//data.fillFromPath(path, strconv.Itoa(n_th_file_in_dir))
+	data.fillFromPath(strconv.Itoa(n_th_file_in_dir))
 
 	//fmt.Printf("%+v\n", data)
 	return data, nil

@@ -5,6 +5,10 @@ import (
 	"testing"
 )
 
+func Test_extract_mp3v1(t *testing.T) {
+	//TODO
+}
+
 func Test_extract_mp3id3v23(t *testing.T) {
 	//TODO
 }

@@ -99,7 +99,8 @@ func ExtractMetadata(path string, n_th_file_in_dir int, file_type string) (Metad
 	switch file_type {
 	case "mp3":
 		header := make([]byte, 10)
-		if _, err := io.ReadFull(f, header); err != nil {
+		_, err := io.ReadFull(f, header)
+		if err != nil {
 			return Metadata{}, err
 		}
 
@@ -110,6 +111,7 @@ func ExtractMetadata(path string, n_th_file_in_dir int, file_type string) (Metad
 
 		fmt.Printf("file header type: %s --- and version: %d.%d --- flags: %+v and tag size of: %d\n", header_deatils.identifier, header_deatils.version, header_deatils.revision, header_deatils.flags, header_deatils.size)
 
+		//ID3 TAG v2 metadata
 		switch header_deatils.version {
 		case 2:
 			//TODO
@@ -128,8 +130,18 @@ func ExtractMetadata(path string, n_th_file_in_dir int, file_type string) (Metad
 				return Metadata{}, err
 			}
 		default:
+			//TODO don't just give up and retur, try for TAGv1 and then from path
 			return Metadata{}, fmt.Errorf("not a valid mp3 ID3 version value: '%d.%d'", header_deatils.version, header_deatils.revision)
 		}
+
+		//TAG v1 metadata
+		//TODO use this as a backup if data is missing or regular tags are not found
+		full_data_size, _ := f.Seek(0, io.SeekEnd) //TODO handle error
+
+		tag_v1_bytes := make([]byte, 128)
+		_, _ = f.ReadAt(tag_v1_bytes, full_data_size-128) //TODO handle error
+		v1_tags, _ := data.extract_mp3v1(tag_v1_bytes)    //TODO handle error
+		fmt.Printf("    v1 tags for backup: %+v\n", v1_tags)
 
 	case "flac":
 		//TODO

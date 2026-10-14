@@ -11,6 +11,34 @@ import (
 )
 
 /*
+ * MP3 v1 tags
+ *
+ */
+
+type v1_tags struct {
+	title     string
+	creator   string
+	album     string
+	track_nbr int
+}
+
+func (m *Metadata) extract_mp3v1(tag_bytes []byte) (v1_tags, error) {
+
+	if string(tag_bytes[0:3]) != "TAG" {
+		return v1_tags{}, fmt.Errorf("not valid v1 tag dataset, does not start with 'TAG'")
+	}
+
+	v1_tags := v1_tags{
+		title:     string(tag_bytes[3:33]),
+		creator:   string(tag_bytes[33:63]),
+		album:     string(tag_bytes[63:93]),
+		track_nbr: int(tag_bytes[126]),
+	}
+
+	return v1_tags, nil
+}
+
+/*
  * MP3 ID3 v2.3 section starts
  *
  */

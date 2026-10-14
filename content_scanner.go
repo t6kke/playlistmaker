@@ -36,7 +36,7 @@ func recursive_scanner(dir, spacer string) []tags.Metadata {
 				}
 				//fmt.Printf("%+v\n", metadata)
 				result_data = append(result_data, metadata)
-				fmt.Println(music_file_count, result_data)
+				//fmt.Println(music_file_count, result_data)
 			}
 		} else if file.IsDir() {
 			//fmt.Println(spacer, file.Name())

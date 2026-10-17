@@ -74,6 +74,7 @@ func ExtractMetadata(path string, n_th_file_in_dir int, file_type string) (Metad
 			return Metadata{}, fmt.Errorf("not a valid mp3 ID3 version value: '%d.%d'", header_deatils.version, header_deatils.revision)
 		}
 
+		// TAGv1.1 metadata
 		// this is for backup when metadata is missing or partial from the file.
 		if data.hasEmptyFields() {
 			tag_v1_bytes := make([]byte, 128)
@@ -95,11 +96,11 @@ func ExtractMetadata(path string, n_th_file_in_dir int, file_type string) (Metad
 	//TODO
 	// this is for backup when metadata is missing or partial from the file.
 	// 1. try some web API to search for the track to get metadata from web.
-	// 2. use the path details for missing metadata --- DONE
-	if data.hasEmptyFields() {
+	// 2. use the path details for missing metadata, enable all other parsing is done
+	/*if data.hasEmptyFields() {
 		path_metadata := data.getMetadataFromPath()
 		data.fillFromPath(&path_metadata, strconv.Itoa(n_th_file_in_dir))
-	}
+	}*/
 
 	//fmt.Printf("%+v\n", data)
 	return data, nil
@@ -111,9 +112,12 @@ func getFileName(path string) string {
 }
 
 func (m *Metadata) hasEmptyFields() bool {
-	v := reflect.ValueOf(m)
+	v := reflect.ValueOf(m).Elem()
 
 	for i := 0; i < v.NumField(); i++ {
+		if v.Type().Field(i).Name == "Duration" {
+			continue
+		}
 		if v.Field(i).IsZero() {
 			return true
 		}
@@ -143,6 +147,7 @@ func (m *Metadata) fillFromMP3v1(tags *v1_tags) {
 }
 
 func (m *Metadata) fillFromPath(pm *path_metadata, n_th_file_in_dir string) {
+	fmt.Printf("    path tags for backup: %+v\n", pm)
 	if m.Title == "" {
 		m.Title = pm.song_name
 	}

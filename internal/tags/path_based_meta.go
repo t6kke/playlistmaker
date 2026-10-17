@@ -12,6 +12,7 @@ type path_metadata struct {
 	track_number string
 }
 
+// TODO a lot of various edge cases and special situation still to handle
 func (m *Metadata) getMetadataFromPath() path_metadata {
 	var result_data path_metadata
 
@@ -36,6 +37,8 @@ func (m *Metadata) getMetadataFromPath() path_metadata {
 				}
 			case 2:
 				album_name_from_file = strings.TrimSpace(file_name_parts[0])
+				//last_index := strings.LastIndex(file_name_parts[1], ".")
+				//potential_song_name := strings.TrimSpace(file_name_parts[1][last_index:])
 				potential_song_name := strings.TrimSpace(strings.Split(file_name_parts[1], ".")[0])
 				if isNumeric(potential_song_name[:2]) {
 					result_data.track_number = potential_song_name[:2]

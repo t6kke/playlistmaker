@@ -66,22 +66,6 @@ type Metadata struct {
 	Track_nbr string
 }
 
-type headerDetails struct {
-	identifier string
-	version    int
-	revision   int
-	flags      headerFlags
-	size       int
-	crc        bool
-}
-
-type headerFlags struct {
-	unsynchronisation      bool
-	extended_header        bool
-	experimental_indicator bool
-	footer_present         bool
-}
-
 func ExtractMetadata(path string, n_th_file_in_dir int, file_type string) (Metadata, error) {
 	f, err := os.Open(filepath.Clean(path))
 	if err != nil {
@@ -107,11 +91,11 @@ func ExtractMetadata(path string, n_th_file_in_dir int, file_type string) (Metad
 		fmt.Println("Header Data")
 		fmt.Println(header[0:10])
 
-		header_deatils := getHeaderDetails(header[0:10])
+		header_deatils := mp3_getHeaderDetails(header[0:10])
 
 		fmt.Printf("file header type: %s --- and version: %d.%d --- flags: %+v and tag size of: %d\n", header_deatils.identifier, header_deatils.version, header_deatils.revision, header_deatils.flags, header_deatils.size)
 
-		//ID3 TAG v2 metadata
+		//ID3 v2.x metadata
 		switch header_deatils.version {
 		case 2:
 			//TODO
@@ -159,40 +143,6 @@ func ExtractMetadata(path string, n_th_file_in_dir int, file_type string) (Metad
 
 	//fmt.Printf("%+v\n", data)
 	return data, nil
-}
-
-func getHeaderDetails(b []byte) headerDetails {
-	result_data := headerDetails{}
-
-	result_data.identifier = string(b[0:3])
-	result_data.version = int(b[3])
-	result_data.revision = int(b[4])
-	result_data.flags = getHeaderFlags(b[5])
-	result_data.size = getCorrectTagSize(b[6:10])
-
-	//fmt.Printf("header struct: %+v\n", result_data)
-
-	return result_data
-}
-
-// TODO find a better location for this function
-func getCorrectTagSize(b []byte) int {
-	//TODO validate lenght of bytes slice and return error if it's not 4
-
-	//fmt.Printf("%08b  %08b %08b\n",b[2], b[2]&0x7f, int(b[2]&0x7f)<<7)
-	full_data := int(b[0]&0x7f)<<21 | int(b[1]&0x7f)<<14 | int(b[2]&0x7f)<<7 | int(b[3]&0x7f)
-	//fmt.Printf("%d, %08b", full_data, full_data)
-
-	return full_data
-}
-
-func getHeaderFlags(b byte) headerFlags {
-	return headerFlags{
-		unsynchronisation:      b&0b10000000 != 0,
-		extended_header:        b&0b01000000 != 0,
-		experimental_indicator: b&0b00100000 != 0,
-		footer_present:         b&0b00010000 != 0,
-	}
 }
 
 func getFileName(path string) string {

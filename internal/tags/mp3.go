@@ -10,8 +10,24 @@ import (
 	"strings"
 )
 
+type mp3_headerDetails struct {
+	identifier string
+	version    int
+	revision   int
+	flags      mp3_headerFlags
+	size       int
+	crc        bool
+}
+
+type mp3_headerFlags struct {
+	unsynchronisation      bool
+	extended_header        bool
+	experimental_indicator bool
+	footer_present         bool
+}
+
 /*
- * MP3 v1 tags
+ * MP3 TAGv1.1
  *
  */
 
@@ -32,7 +48,7 @@ func (m *Metadata) extract_mp3v1(tag_bytes []byte) (v1_tags, error) {
 		title:     string(tag_bytes[3:33]),
 		creator:   string(tag_bytes[33:63]),
 		album:     string(tag_bytes[63:93]),
-		track_nbr: int(tag_bytes[126]),
+		track_nbr: int(tag_bytes[126]), //TODO handle existence sice TAG v1.1 uses thsi byte as track number and v1 does not
 	}
 
 	return v1_tags, nil
@@ -55,7 +71,7 @@ type frameFlags_v3 struct {
 	is_encrypted  bool
 }
 
-func (m *Metadata) extract_mp3id3v23(header_details *headerDetails, f *os.File) error {
+func (m *Metadata) extract_mp3id3v23(header_details *mp3_headerDetails, f *os.File) error {
 	fmt.Println("   ", "Frames Data")
 	tag_data := make([]byte, header_details.size)
 	_, err := io.ReadFull(f, tag_data)
@@ -78,7 +94,7 @@ func (m *Metadata) extract_mp3id3v23(header_details *headerDetails, f *os.File) 
 	//fmt.Println(len(tag_data))
 	//fmt.Println(hex.Dump(tag_data))
 	if header_details.flags.unsynchronisation {
-		unsynchronize(&tag_data)
+		mp3_unsynchronize(&tag_data)
 	}
 
 	frame_header_size := 10 + extended_header_size
@@ -167,7 +183,7 @@ type frameFlags_v4 struct {
 	has_data_length_indicator bool
 }
 
-func (m *Metadata) extract_mp3id3v24(header_details *headerDetails, f *os.File) error {
+func (m *Metadata) extract_mp3id3v24(header_details *mp3_headerDetails, f *os.File) error {
 	fmt.Println("   ", "Frames Data")
 	tag_data := make([]byte, header_details.size)
 	_, err := io.ReadFull(f, tag_data)
@@ -180,7 +196,7 @@ func (m *Metadata) extract_mp3id3v24(header_details *headerDetails, f *os.File) 
 
 	extended_header_size := 0
 	if header_details.flags.extended_header {
-		size := getCorrectTagSize(tag_data[10:15])
+		size := mp3_getCorrectTagSize(tag_data[10:15])
 		//TODO parse extended header details
 
 		extended_header_size = 4 + size
@@ -191,7 +207,7 @@ func (m *Metadata) extract_mp3id3v24(header_details *headerDetails, f *os.File) 
 	//fmt.Println(hex.Dump(tag_data))
 	is_unsync_done := false
 	if header_details.flags.unsynchronisation {
-		unsynchronize(&tag_data)
+		mp3_unsynchronize(&tag_data)
 		is_unsync_done = true
 	}
 
@@ -209,7 +225,7 @@ func (m *Metadata) extract_mp3id3v24(header_details *headerDetails, f *os.File) 
 		}
 
 		//size := int(binary.BigEndian.Uint32(tag_data[pos+4 : pos+8]))
-		size := getCorrectTagSize(tag_data[pos+4 : pos+8])
+		size := mp3_getCorrectTagSize(tag_data[pos+4 : pos+8])
 		if size <= 0 || pos+10+size > len(tag_data) {
 			break
 		}
@@ -222,13 +238,13 @@ func (m *Metadata) extract_mp3id3v24(header_details *headerDetails, f *os.File) 
 		if slices.Contains(frame_identifier_list_to_parse, id) {
 			frame := tag_data[pos+10 : pos+10+size]
 			if frame_flags.has_data_length_indicator {
-				d_len := getCorrectTagSize(frame[:4])
+				d_len := mp3_getCorrectTagSize(frame[:4])
 				fmt.Println(d_len)
 				frame = frame[4:]
 			}
 			if !is_unsync_done && frame_flags.is_unsynchronized {
 				fmt.Println("test")
-				unsynchronize(&frame)
+				mp3_unsynchronize(&frame)
 			}
 			fmt.Println("        ", frame)
 			//fmt.Println("        ", hex.Dump(frame))
@@ -278,7 +294,40 @@ func getFrameFlags_v4(b []byte) frameFlags_v4 {
  *
  */
 
-func unsynchronize(b *[]byte) {
+func mp3_getHeaderDetails(b []byte) mp3_headerDetails {
+	result_data := mp3_headerDetails{}
+
+	result_data.identifier = string(b[0:3])
+	result_data.version = int(b[3])
+	result_data.revision = int(b[4])
+	result_data.flags = mp3_getHeaderFlags(b[5])
+	result_data.size = mp3_getCorrectTagSize(b[6:10])
+
+	//fmt.Printf("header struct: %+v\n", result_data)
+
+	return result_data
+}
+
+func mp3_getCorrectTagSize(b []byte) int {
+	//TODO validate lenght of bytes slice and return error if it's not 4
+
+	//fmt.Printf("%08b  %08b %08b\n",b[2], b[2]&0x7f, int(b[2]&0x7f)<<7)
+	full_data := int(b[0]&0x7f)<<21 | int(b[1]&0x7f)<<14 | int(b[2]&0x7f)<<7 | int(b[3]&0x7f)
+	//fmt.Printf("%d, %08b", full_data, full_data)
+
+	return full_data
+}
+
+func mp3_getHeaderFlags(b byte) mp3_headerFlags {
+	return mp3_headerFlags{
+		unsynchronisation:      b&0b10000000 != 0,
+		extended_header:        b&0b01000000 != 0,
+		experimental_indicator: b&0b00100000 != 0,
+		footer_present:         b&0b00010000 != 0,
+	}
+}
+
+func mp3_unsynchronize(b *[]byte) {
 	data := *b
 	result := make([]byte, 0)
 	for i := 0; i < len(data); i++ {

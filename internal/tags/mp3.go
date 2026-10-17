@@ -2,10 +2,9 @@ package tags
 
 import (
 	"encoding/binary"
-	"os"
-	//"encoding/hex"
 	"fmt"
 	"io"
+	"os"
 	"slices"
 	"strings"
 )
@@ -26,6 +25,19 @@ type mp3_headerFlags struct {
 	footer_present         bool
 }
 
+type mp3_2_2_headerDetails struct {
+	identifier string
+	version    int
+	revision   int
+	flags      mp3_2_2_headerFlags
+	size       int
+}
+
+type mp3_2_2_headerFlags struct {
+	unsynchronisation bool
+	compression       bool
+}
+
 /*
  * MP3 TAGv1.1
  *
@@ -35,7 +47,7 @@ type v1_tags struct {
 	title     string
 	creator   string
 	album     string
-	track_nbr int
+	track_nbr int //TODO to string
 }
 
 func (m *Metadata) extract_mp3v1(tag_bytes []byte) (v1_tags, error) {
@@ -59,6 +71,91 @@ func (m *Metadata) extract_mp3v1(tag_bytes []byte) (v1_tags, error) {
  *
  */
 
+func (m *Metadata) extract_mp3id3_v2_2(initial_header_details *mp3_headerDetails, header_flags_byte byte, f *os.File) error {
+	header_details := mp3_2_2_headerDetails{
+		identifier: initial_header_details.identifier,
+		version:    initial_header_details.version,
+		revision:   initial_header_details.revision,
+		flags:      mp3_2_2_getHeaderFlags(header_flags_byte),
+		size:       initial_header_details.size,
+	}
+
+	fmt.Printf("%+v\n", header_details)
+
+	fmt.Println("   ", "Frames Data")
+	tag_data := make([]byte, header_details.size)
+	_, err := io.ReadFull(f, tag_data)
+	if err != nil {
+		return err
+	}
+
+	frame_identifier_name_map := getFrameIdentifierMap_v2_2()
+	frame_identifier_list_to_parse := getFrameIdentifierSliceToParse_v2_2()
+
+	if header_details.flags.unsynchronisation {
+		mp3_unsynchronize(&tag_data)
+	}
+
+	frame_header_size := 10
+	for pos := 0; pos+frame_header_size <= len(tag_data); {
+		fmt.Println("   ", tag_data[pos:pos+6])
+		//fmt.Println("   ", hex.Dump(tag_data[pos:pos+10]))
+
+		id := string(tag_data[pos : pos+3])
+
+		//stop after final tag item
+		if id == "\x00\x00\x00\x00" {
+			fmt.Println("   ", " --- no more data")
+			break
+		}
+
+		size := int(tag_data[pos+3])<<16 | int(tag_data[pos+4])<<8 | int(tag_data[pos+5])
+		if size <= 0 || pos+6+size > len(tag_data) {
+			break
+		}
+
+		fmt.Printf("    frame header id: %s --- and size of: %d, bytes: %d\n", id, size, tag_data[pos+3:pos+6])
+
+		if slices.Contains(frame_identifier_list_to_parse, id) {
+			frame := tag_data[pos+6 : pos+6+size]
+			fmt.Println("        ", frame)
+			//fmt.Println("        ", hex.Dump(frame))
+			fmt.Printf("         %s: %v\n", frame_identifier_name_map[id], decodeText(frame))
+
+			switch id {
+			case "TT2":
+				m.Title = decodeText(frame)
+			case "TP1":
+				m.Creator = decodeText(frame)
+			case "TAL":
+				m.Album = decodeText(frame)
+			case "TLE":
+				m.Duration = decodeText(frame)
+			case "TRK":
+				m.Track_nbr = decodeText(frame)
+				if strings.Contains(m.Track_nbr, "/") {
+					m.Track_nbr = strings.Split(m.Track_nbr, "/")[0]
+				}
+			}
+		}
+		pos += 6 + size
+	}
+
+	return nil
+}
+
+func mp3_2_2_getHeaderFlags(b byte) mp3_2_2_headerFlags {
+	return mp3_2_2_headerFlags{
+		unsynchronisation: b&0b10000000 != 0,
+		compression:       b&0b01000000 != 0,
+	}
+}
+
+/*
+ * MP3 ID3 v2.3 section starts
+ *
+ */
+
 type frameFlags_v3 struct {
 	//status flags
 	tag_alter_preservation  bool //if true discard frame
@@ -71,7 +168,7 @@ type frameFlags_v3 struct {
 	is_encrypted  bool
 }
 
-func (m *Metadata) extract_mp3id3v23(header_details *mp3_headerDetails, f *os.File) error {
+func (m *Metadata) extract_mp3id3_v2_3(header_details *mp3_headerDetails, f *os.File) error {
 	fmt.Println("   ", "Frames Data")
 	tag_data := make([]byte, header_details.size)
 	_, err := io.ReadFull(f, tag_data)
@@ -79,8 +176,8 @@ func (m *Metadata) extract_mp3id3v23(header_details *mp3_headerDetails, f *os.Fi
 		return err
 	}
 
-	frame_identifier_name_map := getFrameIdentifierMap()
-	frame_identifier_list_to_parse := getFrameIdentifierSliceToParse()
+	frame_identifier_name_map := getFrameIdentifierMap_v2_3()
+	frame_identifier_list_to_parse := getFrameIdentifierSliceToParse_v2_3()
 
 	extended_header_size := 0
 	if header_details.flags.extended_header {
@@ -183,7 +280,7 @@ type frameFlags_v4 struct {
 	has_data_length_indicator bool
 }
 
-func (m *Metadata) extract_mp3id3v24(header_details *mp3_headerDetails, f *os.File) error {
+func (m *Metadata) extract_mp3id3_v2_4(header_details *mp3_headerDetails, f *os.File) error {
 	fmt.Println("   ", "Frames Data")
 	tag_data := make([]byte, header_details.size)
 	_, err := io.ReadFull(f, tag_data)
@@ -191,8 +288,8 @@ func (m *Metadata) extract_mp3id3v24(header_details *mp3_headerDetails, f *os.Fi
 		return err
 	}
 
-	frame_identifier_name_map := getFrameIdentifierMap()
-	frame_identifier_list_to_parse := getFrameIdentifierSliceToParse()
+	frame_identifier_name_map := getFrameIdentifierMap_v2_3()
+	frame_identifier_list_to_parse := getFrameIdentifierSliceToParse_v2_3()
 
 	extended_header_size := 0
 	if header_details.flags.extended_header {
@@ -338,4 +435,75 @@ func mp3_unsynchronize(b *[]byte) {
 		}
 	}
 	*b = result
+}
+
+/*
+ * MP3 frame identifier information
+ * both ID3 v2.2 and v2.3; v2.4
+ *
+ */
+
+func getFrameIdentifierMap_v2_2() map[string]string {
+	//following details from: https://id3.org/id3v2-00
+	//initally only set up information that are relevant for me, maybe will expand but since v2.2 is legacy setup it's likely not needed'
+	return map[string]string{
+		"TAL": "album name",
+		"TLE": "lenght",
+		"TP1": "leade artist",
+		"TRK": "track number",
+		"TT2": "title of the track",
+	}
+}
+
+func getFrameIdentifierSliceToParse_v2_2() []string {
+	return []string{"TT2", "TP1", "TAL", "TLE", "TRK"}
+}
+
+func getFrameIdentifierMap_v2_3() map[string]string {
+	//following details from: https://id3.org/id3v2.3.0#ID3v2_header
+	//TODO maybe not all the details here are actually needed
+	return map[string]string{
+		"TALB": "album name",
+		"TBPM": "beats per minute",
+		"TCOM": "composers name",
+		"TCON": "content type", //TODO more details here for genres
+		"TCOP": "copyright infromation",
+		"TDAT": "date information in DDMM format",
+		"TDLY": "playlist details, silence between songs in a playlist",
+		"TENC": "person or organization that encoded the file",
+		"TEXT": "writers of the content",
+		"TFLT": "file type, indicates type of audio this tag defines", //TODO more details
+		"TIME": "time of the recording in HHMM format",
+		"TIT1": "content group description",
+		"TIT2": "name of the song/piece",
+		"TIT3": "subtitle or descrition of the song/piece",
+		"TKEY": "musical key in which the sound starts",
+		"TLAN": "language(s) of the lyrics of the song",
+		"TLEN": "length of the audiofile in milliseconds represented as numeric string",
+		"TMED": "description of the media the sound originated from", //TODO more details
+		"TOAL": "original album of the song",
+		"TOFN": "orignial/preferred filename",
+		"TOLY": "original writers of the lyrics",
+		"TOPE": "original performer",
+		"TORY": "original release year",
+		"TOWN": "license owner name",
+		"TPE1": "main artist name",
+		"TPE2": "additional information on the performers",
+		"TPE3": "conductor name",
+		"TPE4": "information on the authors of the remix",
+		"TPOS": "information what part of the set the audio came from(CD1, CD2 etc.), in numeric string format",
+		"TPUB": "lable or publisher name",
+		"TRCK": "track number",
+		"TRDA": "reckording date, used as acompliment to TYER, TDAT and TIME",
+		"TRSN": "internet radio station name",
+		"TRSO": "internet radio station owner",
+		"TSIZ": "size of the audio file in bytes excluding the tag",
+		"TSRC": "International Standard Recording Code(ISRC)",
+		"TSSE": "audio encoder used and it's setting when it was encoded",
+		"TYER": "year of the recording, in numeric string format and always four characters long",
+	}
+}
+
+func getFrameIdentifierSliceToParse_v2_3() []string {
+	return []string{"TIT2", "TPE1", "TALB", "TLEN", "TRCK"}
 }

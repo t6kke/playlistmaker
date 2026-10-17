@@ -9,7 +9,11 @@ func Test_extract_mp3v1(t *testing.T) {
 	//TODO
 }
 
-func Test_extract_mp3id3v23(t *testing.T) {
+func Test_extract_mp3id3_v2_2(t *testing.T) {
+	//TODO
+}
+
+func Test_extract_mp3id3_v2_3(t *testing.T) {
 	//TODO
 }
 
@@ -17,7 +21,7 @@ func Test_getFrameFlags_v3(t *testing.T) {
 	//TODO
 }
 
-func Test_extract_mp3id3v24(t *testing.T) {
+func Test_extract_mp3id3_v2_4(t *testing.T) {
 	//TODO
 }
 

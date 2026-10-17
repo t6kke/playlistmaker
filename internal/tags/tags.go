@@ -5,9 +5,9 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"reflect"
 	"strconv"
 	"strings"
-	"reflect"
 )
 
 type Metadata struct {
@@ -98,7 +98,7 @@ func ExtractMetadata(path string, n_th_file_in_dir int, file_type string) (Metad
 	// 2. use the path details for missing metadata --- DONE
 	if data.hasEmptyFields() {
 		path_metadata := data.getMetadataFromPath()
-		data.fillFromPath(&path_metadata ,strconv.Itoa(n_th_file_in_dir))
+		data.fillFromPath(&path_metadata, strconv.Itoa(n_th_file_in_dir))
 	}
 
 	//fmt.Printf("%+v\n", data)
@@ -164,5 +164,3 @@ func (m *Metadata) fillFromPath(pm *path_metadata, n_th_file_in_dir string) {
 		m.Track_nbr = n_th_file_in_dir
 	}
 }
-
-

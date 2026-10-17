@@ -21,22 +21,22 @@ func (mlc *MusicLibraryConfig) scanner() []tags.Metadata {
 }
 
 func recursive_scanner(dir, spacer string) []tags.Metadata {
-	audio_file_extensions := getAudioFileExtensions()
 	files, _ := os.ReadDir(dir)
 	file_count := 0
 	music_file_count := 0
 	var result_data []tags.Metadata
 	for _, file := range files {
 		file_count += 1
-		if !file.IsDir() && slices.Contains(audio_file_extensions, strings.Split(file.Name(), ".")[len(strings.Split(file.Name(), "."))-1]) {
-			if file_count == 1 {
+		if !file.IsDir() && slices.Contains(getAudioFileExtensions(), strings.Split(file.Name(), ".")[len(strings.Split(file.Name(), "."))-1]) {
+			if file_count >= 1 {
 				music_file_count += 1
-				metadata, err := tags.ExtractMetadata(dir+"/"+file.Name(), music_file_count)
+				metadata, err := tags.ExtractMetadata(dir+"/"+file.Name(), music_file_count, "mp3") //TODO rebuild how correct file type metadata extraction is requested and passed through, TODO remove the harcoding
 				if err != nil {
 					return []tags.Metadata{}
 				}
 				//fmt.Printf("%+v\n", metadata)
 				result_data = append(result_data, metadata)
+				//fmt.Println(music_file_count, result_data)
 			}
 		} else if file.IsDir() {
 			//fmt.Println(spacer, file.Name())

@@ -80,16 +80,16 @@ func (m *Metadata) extract_mp3id3_v2_2(initial_header_details *mp3_headerDetails
 		size:       initial_header_details.size,
 	}
 
-	fmt.Printf("%+v\n", header_details)
+	//fmt.Printf("%+v\n", header_details)
 
-	fmt.Println("   ", "Frames Data")
+	//fmt.Println("   ", "Frames Data")
 	tag_data := make([]byte, header_details.size)
 	_, err := io.ReadFull(f, tag_data)
 	if err != nil {
 		return err
 	}
 
-	frame_identifier_name_map := getFrameIdentifierMap_v2_2()
+	//frame_identifier_name_map := getFrameIdentifierMap_v2_2()
 	frame_identifier_list_to_parse := getFrameIdentifierSliceToParse_v2_2()
 
 	if header_details.flags.unsynchronisation {
@@ -98,14 +98,14 @@ func (m *Metadata) extract_mp3id3_v2_2(initial_header_details *mp3_headerDetails
 
 	frame_header_size := 10
 	for pos := 0; pos+frame_header_size <= len(tag_data); {
-		fmt.Println("   ", tag_data[pos:pos+6])
-		//fmt.Println("   ", hex.Dump(tag_data[pos:pos+10]))
+		//fmt.Println("   ", tag_data[pos:pos+6])
+		////fmt.Println("   ", hex.Dump(tag_data[pos:pos+10]))
 
 		id := string(tag_data[pos : pos+3])
 
 		//stop after final tag item
 		if id == "\x00\x00\x00\x00" {
-			fmt.Println("   ", " --- no more data")
+			//fmt.Println("   ", " --- no more data")
 			break
 		}
 
@@ -114,13 +114,13 @@ func (m *Metadata) extract_mp3id3_v2_2(initial_header_details *mp3_headerDetails
 			break
 		}
 
-		fmt.Printf("    frame header id: %s --- and size of: %d, bytes: %d\n", id, size, tag_data[pos+3:pos+6])
+		//fmt.Printf("    frame header id: %s --- and size of: %d, bytes: %d\n", id, size, tag_data[pos+3:pos+6])
 
 		if slices.Contains(frame_identifier_list_to_parse, id) {
 			frame := tag_data[pos+6 : pos+6+size]
-			fmt.Println("        ", frame)
-			//fmt.Println("        ", hex.Dump(frame))
-			fmt.Printf("         %s: %v\n", frame_identifier_name_map[id], decodeText(frame))
+			//fmt.Println("        ", frame)
+			////fmt.Println("        ", hex.Dump(frame))
+			//fmt.Printf("         %s: %v\n", frame_identifier_name_map[id], decodeText(frame))
 
 			switch id {
 			case "TT2":
@@ -169,14 +169,14 @@ type frameFlags_v3 struct {
 }
 
 func (m *Metadata) extract_mp3id3_v2_3(header_details *mp3_headerDetails, f *os.File) error {
-	fmt.Println("   ", "Frames Data")
+	//fmt.Println("   ", "Frames Data")
 	tag_data := make([]byte, header_details.size)
 	_, err := io.ReadFull(f, tag_data)
 	if err != nil {
 		return err
 	}
 
-	frame_identifier_name_map := getFrameIdentifierMap_v2_3()
+	//frame_identifier_name_map := getFrameIdentifierMap_v2_3()
 	frame_identifier_list_to_parse := getFrameIdentifierSliceToParse_v2_3()
 
 	extended_header_size := 0
@@ -188,22 +188,22 @@ func (m *Metadata) extract_mp3id3_v2_3(header_details *mp3_headerDetails, f *os.
 		extended_header_size = 4 + size
 	}
 
-	//fmt.Println(len(tag_data))
-	//fmt.Println(hex.Dump(tag_data))
+	////fmt.Println(len(tag_data))
+	////fmt.Println(hex.Dump(tag_data))
 	if header_details.flags.unsynchronisation {
 		mp3_unsynchronize(&tag_data)
 	}
 
 	frame_header_size := 10 + extended_header_size
 	for pos := 0; pos+frame_header_size <= len(tag_data); {
-		fmt.Println("   ", tag_data[pos:pos+10])
-		//fmt.Println("   ", hex.Dump(tag_data[pos:pos+10]))
+		//fmt.Println("   ", tag_data[pos:pos+10])
+		////fmt.Println("   ", hex.Dump(tag_data[pos:pos+10]))
 
 		id := string(tag_data[pos : pos+4])
 
 		//stop after final tag item
 		if id == "\x00\x00\x00\x00" {
-			fmt.Println("   ", " --- no more data")
+			//fmt.Println("   ", " --- no more data")
 			break
 		}
 
@@ -212,17 +212,17 @@ func (m *Metadata) extract_mp3id3_v2_3(header_details *mp3_headerDetails, f *os.
 			break
 		}
 
-		fmt.Printf("    frame header id: %s --- and size of: %d, bytes: %d --- flags data: %08b\n", id, size, tag_data[pos+4:pos+8], tag_data[pos+8:pos+10])
-		frame_flags := getFrameFlags_v3(tag_data[pos+8 : pos+10])
-		fmt.Printf("    frame flags: %+v\n", frame_flags)
+		//fmt.Printf("    frame header id: %s --- and size of: %d, bytes: %d --- flags data: %08b\n", id, size, tag_data[pos+4:pos+8], tag_data[pos+8:pos+10])
+		//frame_flags := getFrameFlags_v3(tag_data[pos+8 : pos+10])
+		//fmt.Printf("    frame flags: %+v\n", frame_flags)
 		//TODO deal with frame header flags
 		//handled: -
 
 		if slices.Contains(frame_identifier_list_to_parse, id) {
 			frame := tag_data[pos+10 : pos+10+size]
-			fmt.Println("        ", frame)
-			//fmt.Println("        ", hex.Dump(frame))
-			fmt.Printf("         %s: %v\n", frame_identifier_name_map[id], decodeText(frame))
+			//fmt.Println("        ", frame)
+			////fmt.Println("        ", hex.Dump(frame))
+			//fmt.Printf("         %s: %v\n", frame_identifier_name_map[id], decodeText(frame))
 
 			switch id {
 			case "TIT2":
@@ -281,14 +281,14 @@ type frameFlags_v4 struct {
 }
 
 func (m *Metadata) extract_mp3id3_v2_4(header_details *mp3_headerDetails, f *os.File) error {
-	fmt.Println("   ", "Frames Data")
+	//fmt.Println("   ", "Frames Data")
 	tag_data := make([]byte, header_details.size)
 	_, err := io.ReadFull(f, tag_data)
 	if err != nil {
 		return err
 	}
 
-	frame_identifier_name_map := getFrameIdentifierMap_v2_3()
+	//frame_identifier_name_map := getFrameIdentifierMap_v2_3()
 	frame_identifier_list_to_parse := getFrameIdentifierSliceToParse_v2_3()
 
 	extended_header_size := 0
@@ -300,8 +300,8 @@ func (m *Metadata) extract_mp3id3_v2_4(header_details *mp3_headerDetails, f *os.
 
 	}
 
-	//fmt.Println(len(tag_data))
-	//fmt.Println(hex.Dump(tag_data))
+	////fmt.Println(len(tag_data))
+	////fmt.Println(hex.Dump(tag_data))
 	is_unsync_done := false
 	if header_details.flags.unsynchronisation {
 		mp3_unsynchronize(&tag_data)
@@ -310,14 +310,14 @@ func (m *Metadata) extract_mp3id3_v2_4(header_details *mp3_headerDetails, f *os.
 
 	frame_header_size := 10 + extended_header_size
 	for pos := 0; pos+frame_header_size <= len(tag_data); {
-		fmt.Println("   ", tag_data[pos:pos+10])
-		//fmt.Println("   ", hex.Dump(tag_data[pos:pos+10]))
+		//fmt.Println("   ", tag_data[pos:pos+10])
+		////fmt.Println("   ", hex.Dump(tag_data[pos:pos+10]))
 
 		id := string(tag_data[pos : pos+4])
 
 		//stop after final tag item
 		if id == "\x00\x00\x00\x00" {
-			fmt.Println("   ", " --- no more data")
+			//fmt.Println("   ", " --- no more data")
 			break
 		}
 
@@ -327,7 +327,7 @@ func (m *Metadata) extract_mp3id3_v2_4(header_details *mp3_headerDetails, f *os.
 			break
 		}
 
-		fmt.Printf("    frame header id: %s --- and size of: %d, bytes: %d --- flags data: %08b\n", id, size, tag_data[pos+4:pos+8], tag_data[pos+8:pos+10])
+		//fmt.Printf("    frame header id: %s --- and size of: %d, bytes: %d --- flags data: %08b\n", id, size, tag_data[pos+4:pos+8], tag_data[pos+8:pos+10])
 		frame_flags := getFrameFlags_v4(tag_data[pos+8 : pos+10])
 		//TODO deal with frame header flags
 		//handled: data_lenght, unsync
@@ -335,17 +335,17 @@ func (m *Metadata) extract_mp3id3_v2_4(header_details *mp3_headerDetails, f *os.
 		if slices.Contains(frame_identifier_list_to_parse, id) {
 			frame := tag_data[pos+10 : pos+10+size]
 			if frame_flags.has_data_length_indicator {
-				d_len := mp3_getCorrectTagSize(frame[:4])
-				fmt.Println(d_len)
+				//d_len := mp3_getCorrectTagSize(frame[:4])
+				//fmt.Println(d_len)
 				frame = frame[4:]
 			}
 			if !is_unsync_done && frame_flags.is_unsynchronized {
-				fmt.Println("test")
+				//fmt.Println("test")
 				mp3_unsynchronize(&frame)
 			}
-			fmt.Println("        ", frame)
-			//fmt.Println("        ", hex.Dump(frame))
-			fmt.Printf("         %s: %v\n", frame_identifier_name_map[id], decodeText(frame))
+			//fmt.Println("        ", frame)
+			////fmt.Println("        ", hex.Dump(frame))
+			//fmt.Printf("         %s: %v\n", frame_identifier_name_map[id], decodeText(frame))
 
 			switch id {
 			case "TIT2":
@@ -400,7 +400,7 @@ func mp3_getHeaderDetails(b []byte) mp3_headerDetails {
 	result_data.flags = mp3_getHeaderFlags(b[5])
 	result_data.size = mp3_getCorrectTagSize(b[6:10])
 
-	//fmt.Printf("header struct: %+v\n", result_data)
+	////fmt.Printf("header struct: %+v\n", result_data)
 
 	return result_data
 }
@@ -408,9 +408,9 @@ func mp3_getHeaderDetails(b []byte) mp3_headerDetails {
 func mp3_getCorrectTagSize(b []byte) int {
 	//TODO validate lenght of bytes slice and return error if it's not 4
 
-	//fmt.Printf("%08b  %08b %08b\n",b[2], b[2]&0x7f, int(b[2]&0x7f)<<7)
+	////fmt.Printf("%08b  %08b %08b\n",b[2], b[2]&0x7f, int(b[2]&0x7f)<<7)
 	full_data := int(b[0]&0x7f)<<21 | int(b[1]&0x7f)<<14 | int(b[2]&0x7f)<<7 | int(b[3]&0x7f)
-	//fmt.Printf("%d, %08b", full_data, full_data)
+	////fmt.Printf("%d, %08b", full_data, full_data)
 
 	return full_data
 }
@@ -428,7 +428,7 @@ func mp3_unsynchronize(b *[]byte) {
 	data := *b
 	result := make([]byte, 0)
 	for i := 0; i < len(data); i++ {
-		//fmt.Printf("%02X ", b[i])
+		////fmt.Printf("%02X ", b[i])
 		result = append(result, data[i])
 		if data[i] == 0xFF && i+1 < len(data) && data[i+1] == 0x00 {
 			i++

@@ -15,7 +15,7 @@ func getAudioFileExtensions() []string {
 
 func (mlc *MusicLibraryConfig) scanner() []tags.Metadata {
 	all_files_metadata := recursive_scanner(mlc.Songs_dir, "")
-	fmt.Println(len(all_files_metadata))
+	fmt.Printf("Number of items handled: '%d'\n", len(all_files_metadata))
 	return all_files_metadata
 }
 

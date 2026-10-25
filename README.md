@@ -11,6 +11,8 @@ I created this to make it easier for me to manage my local music library playlis
 Tool is built to run on linux system.
 Application configurations are stored in plm_conf.json file in users profile .confg/playlistmaker/ directory. Parameters expect full paths to the directories.
 
-Extracts ID3 metadata from MP3 files. Handles TAG v1.1, ID3v2.2, ID3v2.3, ID3v2.4. When information is missing then file name na directory path information is used as an alternative although it can cause faulty information due to data quality issues.
+- Extracts ID3 metadata from MP3 files. Handles TAG v1.1, ID3v2.2, ID3v2.3, ID3v2.4. 
+- Extracts vorbis comments from FLAC files.
+- When information is missing then file name na directory path information is used as an alternative although it can cause faulty information due to data quality issues.
 
 Playlyst output is written into .xspf xml formatted playlist file.

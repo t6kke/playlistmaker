@@ -26,15 +26,15 @@ func ExtractMetadata(path string, n_th_file_in_dir int, file_type string) (Metad
 	}
 	defer f.Close()
 
-	fmt.Println(path)
+	////fmt.Println(path)
 	file_name := getFileName(path)
-	fmt.Println(file_name)
+	////fmt.Println(file_name)
 
 	data := Metadata{}
 	data.Path = path
 
 	switch file_type {
-	case "mp3-":
+	case "mp3":
 		err := data.handleMP3(f)
 		if err != nil {
 			return Metadata{}, err
@@ -52,12 +52,12 @@ func ExtractMetadata(path string, n_th_file_in_dir int, file_type string) (Metad
 	// this is for backup when metadata is missing or partial from the file.
 	// 1. try some web API to search for the track to get metadata from web.
 	// 2. use the path details for missing metadata, enable all other parsing is done
-	/*if data.hasEmptyFields() {
+	if data.hasEmptyFields() {
 		path_metadata := data.getMetadataFromPath()
 		data.fillFromPath(&path_metadata, strconv.Itoa(n_th_file_in_dir))
-	}*/
+	}
 
-	//fmt.Printf("%+v\n", data)
+	////fmt.Printf("%+v\n", data)
 	return data, nil
 }
 
@@ -68,36 +68,36 @@ func (m *Metadata) handleMP3(f *os.File) error {
 		return err
 	}
 
-	fmt.Println("Header Data --- MP3")
-	fmt.Println(header)
+	//fmt.Println("Header Data --- MP3")
+	//fmt.Println(header)
 
 	header_deatils := mp3_getHeaderDetails(header)
 
-	fmt.Printf("file header type: %s --- and version: %d.%d --- flags: %+v and tag size of: %d\n", header_deatils.identifier, header_deatils.version, header_deatils.revision, header_deatils.flags, header_deatils.size)
+	//fmt.Printf("file header type: %s --- and version: %d.%d --- flags: %+v and tag size of: %d\n", header_deatils.identifier, header_deatils.version, header_deatils.revision, header_deatils.flags, header_deatils.size)
 
 	//ID3 v2.x metadata
 	switch header_deatils.version {
 	case 2:
-		fmt.Println("   ", "mp3 id3 v2.2")
+		//fmt.Println("   ", "mp3 id3 v2.2")
 		err := m.extract_mp3id3_v2_2(&header_deatils, header[5], f)
 		if err != nil {
 			return err
 		}
 	case 3:
-		fmt.Println("   ", "mp3 id3 v2.3")
+		//fmt.Println("   ", "mp3 id3 v2.3")
 		err := m.extract_mp3id3_v2_3(&header_deatils, f)
 		if err != nil {
 			return err
 		}
 	case 4:
-		fmt.Println("   ", "mp3 id3 v2.4")
+		//fmt.Println("   ", "mp3 id3 v2.4")
 		err := m.extract_mp3id3_v2_4(&header_deatils, f)
 		if err != nil {
 			return err
 		}
 	default:
 		//return fmt.Errorf("not a valid mp3 ID3 version value: '%d.%d'", header_deatils.version, header_deatils.revision) //not returing since we use backup of TAGv1
-		fmt.Printf("not a valid mp3 ID3 version value: '%d.%d'", header_deatils.version, header_deatils.revision)
+		//fmt.Printf("not a valid mp3 ID3 version value: '%d.%d'", header_deatils.version, header_deatils.revision)
 	}
 
 	// TAGv1.1 metadata
@@ -119,13 +119,16 @@ func (m *Metadata) handleFLAC(f *os.File) error {
 		return err
 	}
 
-	fmt.Printf("Marker: '%s' --- %v\n", marker, marker)
+	//fmt.Printf("Marker: '%s' --- %v\n", marker, marker)
 
 	if string(marker) != "fLaC" {
 		return fmt.Errorf(".flac file marker not 'fLaC' --- got: '%s'", marker)
 	}
 
-	m.extract_flac_meta(f)
+	err = m.extract_flac_meta(f)
+	if err != nil {
+		return fmt.Errorf("failed to extract metadata from flac file: '%s'", err)
+	}
 
 	return nil
 }
@@ -151,7 +154,7 @@ func (m *Metadata) hasEmptyFields() bool {
 }
 
 func (m *Metadata) fillFromMP3v1(tags *v1_tags) {
-	fmt.Printf("    v1 tags for backup: %+v\n", tags)
+	//fmt.Printf("    v1 tags for backup: %+v\n", tags)
 
 	if m.Title == "" {
 		m.Title = tags.title
@@ -171,7 +174,7 @@ func (m *Metadata) fillFromMP3v1(tags *v1_tags) {
 }
 
 func (m *Metadata) fillFromPath(pm *path_metadata, n_th_file_in_dir string) {
-	fmt.Printf("    path tags for backup: %+v\n", pm)
+	//fmt.Printf("    path tags for backup: %+v\n", pm)
 	if m.Title == "" {
 		m.Title = pm.song_name
 	}
@@ -185,11 +188,11 @@ func (m *Metadata) fillFromPath(pm *path_metadata, n_th_file_in_dir string) {
 		//TODO skipped, not required to have this field
 	}
 	if m.Track_nbr == "" {
-		//fmt.Printf("       no track number in frame, using value from file name: %s\n", pm.track_number)
+		////fmt.Printf("       no track number in frame, using value from file name: %s\n", pm.track_number)
 		m.Track_nbr = pm.track_number
 	}
 	if m.Track_nbr == "" {
-		//fmt.Printf("       no track number in frame, nor in file name, using file count value: %d\n", n_th_file_in_dir)
+		////fmt.Printf("       no track number in frame, nor in file name, using file count value: %d\n", n_th_file_in_dir)
 		m.Track_nbr = n_th_file_in_dir
 	}
 }

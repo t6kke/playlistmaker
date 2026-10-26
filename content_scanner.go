@@ -10,13 +10,54 @@ import (
 )
 
 func getAudioFileExtensions() []string {
-	return []string{"mp3", "flac"}
+	return []string{} //TODO remove, this is for testing purpose, revert back to original when actually scanning
+	//return []string{"mp3", "flac"}
 }
 
 func (mlc *MusicLibraryConfig) scanner() []tags.Metadata {
-	all_files_metadata := recursive_scanner(mlc.Songs_dir, "")
-	fmt.Printf("Number of items handled: '%d'\n", len(all_files_metadata))
-	return all_files_metadata
+	var temp_result = make([]tags.Metadata, 0)
+
+	dir_channel := make(chan string)
+	go func() {
+		defer close(dir_channel)
+		getDirForScan(mlc.Songs_dir, dir_channel)
+	}()
+
+	for {
+		item, ok := <- dir_channel
+		if ok == false {
+			break
+		}
+		fmt.Println(item)
+	}
+
+	// for item := range dir_channel {
+	// 	fmt.Println(item)
+	// }
+
+	return temp_result
+
+	//original setup before intial dir scanning to channel
+	//all_files_metadata := recursive_scanner(mlc.Songs_dir, "")
+	//fmt.Printf("Number of items handled: '%d'\n", len(all_files_metadata))
+	//return all_files_metadata
+}
+
+func getDirForScan(dir string, dir_channel chan string) {
+	//var result = make([]string,0)
+
+	//fmt.Println(dir)
+	files, _ := os.ReadDir(dir)
+
+	for _, file := range files {
+		if file.IsDir() && strings.Contains(file.Name(), "_soundtracks") {
+			//fmt.Printf("Scan This: '%s'\n", file.Name())
+			getDirForScan(dir+"/"+file.Name(), dir_channel)
+		} else {
+			//fmt.Printf("Add This: '%s'\n", file.Name())
+			dir_channel <- dir+"/"+file.Name()
+		}
+	}
 }
 
 func recursive_scanner(dir, spacer string) []tags.Metadata {

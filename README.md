@@ -14,5 +14,6 @@ Application configurations are stored in plm_conf.json file in users profile .co
 - Extracts ID3 metadata from MP3 files. Handles TAG v1.1, ID3v2.2, ID3v2.3, ID3v2.4. 
 - Extracts vorbis comments from FLAC files.
 - When information is missing then file name na directory path information is used as an alternative although it can cause faulty information due to data quality issues.
+- Multiple playlist files are created based on folder structure
 
 Playlyst output is written into .xspf xml formatted playlist file.

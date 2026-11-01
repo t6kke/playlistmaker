@@ -96,7 +96,7 @@ func getDirForScanAndDirPlaylists(dir string, playlists *map[string]playlist_obj
 				//fmt.Println("count",strings.ToUpper(pl_ident)+": ", len((*playlists)[pl_ident].metadata_items))
 			}
 
-			data := getDirForScanAndDirPlaylists(dir + "/" + file.Name(), playlists)
+			data := getDirForScanAndDirPlaylists(dir+"/"+file.Name(), playlists)
 			result = append(result, data...)
 		} else {
 			//fmt.Printf("Add This: '%s'\n", file.Name())
@@ -163,7 +163,6 @@ func scanForMetadata(root_dir_for_scan []string, playlists *map[string]playlist_
 			item.metadata_items = append(item.metadata_items, metadata...)
 			(*playlists)[pl_ident] = item
 			//fmt.Println("count",strings.ToUpper(pl_ident)+": ", len((*playlists)[pl_ident].metadata_items))
-
 
 		} else {
 			//fmt.Print("SONGS: ", dir)

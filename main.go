@@ -18,9 +18,5 @@ func main() {
 
 	//fmt.Println(app_config)
 
-	all_files_metadata := app_config.music_library_config.scanner()
-	err = app_config.music_library_config.createAllSongsPL(all_files_metadata)
-	if err != nil {
-		panic(err)
-	}
+	app_config.music_library_config.scanner()
 }

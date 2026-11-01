@@ -12,7 +12,7 @@ import (
 func getAudioFileExtensions() []string {
 	//return []string{} //TODO remove, this is for testing purpose, revert back to original when actually scanning
 	//return []string{"flac"} //TODO remove, this is for testing purpose, revert back to original when actually scanning
-	return []string{"mp3", "MP3", "flac"}
+	return []string{"mp3", "flac"}
 }
 
 func getNotRelevantFileExtensions() []string {

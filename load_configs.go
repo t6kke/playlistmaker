@@ -92,22 +92,51 @@ const songs_playlist_dir = "playlists"
 const radio_playlist_dir = "internet_radios"
 
 type MusicLibraryConfig struct {
-	Media_dir          string `json:"media_dir"`
-	Songs_dir          string `json:"songs_dir"`
-	Songs_playlist_dir string `json:"songs_playlist_dir"`
-	Radio_playlist_dir string `json:"radio_playlist_dir"`
+	Media_dir          string                 `json:"media_dir"`
+	Songs_dir          string                 `json:"songs_dir"`
+	Songs_playlist_dir string                 `json:"songs_playlist_dir"`
+	Radio_playlist_dir string                 `json:"radio_playlist_dir"`
+	Custom_playlists   []customPlaylistConfig `json:"custom_playlists"`
+}
+
+type identCategory int //TODO should be string for the json reading clarity and parsing in metadata scanner
+
+const (
+	album identCategory = iota
+	artist
+	genre
+	year
+)
+
+type customPlaylistConfig struct {
+	Playlist_name       string        `json:"playlist_name"`
+	Identifier_category identCategory `json:"identifier_category"`
+	Identifier_keyword  string        `json:"identifier_keyword"`
+	Is_lookup_wildcard  bool          `json:"is_lookup_wildcard"`
 }
 
 func (mlc *MusicLibraryConfig) new_config(media_dir string) {
+	var custom_playlists []customPlaylistConfig
+	example_item := customPlaylistConfig{
+		Playlist_name:       "example_name",
+		Identifier_category: artist,
+		Identifier_keyword:  "example_Metallica",
+		Is_lookup_wildcard:  false,
+	}
+	custom_playlists = append(custom_playlists, example_item)
 	mlc.Media_dir = media_dir
 	mlc.Songs_dir = media_dir + "/" + songs_dir
 	mlc.Songs_playlist_dir = media_dir + "/" + songs_playlist_dir
 	mlc.Radio_playlist_dir = media_dir + "/" + radio_playlist_dir
+	mlc.Custom_playlists = custom_playlists
 }
 
 func (mlc *MusicLibraryConfig) validate_dirs() error {
 	v := reflect.ValueOf(mlc).Elem()
 	for i := 0; i < v.NumField(); i++ {
+		if v.Type().Field(i).Name == "Custom_playlists" {
+			continue
+		}
 		_, err := os.Stat(v.Field(i).String())
 		if os.IsNotExist(err) {
 			return fmt.Errorf("media directory validation failure: %v", err)

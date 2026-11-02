@@ -68,6 +68,8 @@ func (mlc *MusicLibraryConfig) scanner() {
 	}
 }
 
+
+
 func getDirForScanAndDirPlaylists(dir string, playlists *map[string]playlist_obj) []string {
 	var result = make([]string, 0)
 
@@ -221,4 +223,119 @@ func recursive_scanner(dir, spacer string, missing_handling_for_files *[]string)
 		}
 	}
 	return result_data
+}
+
+
+
+/*
+ * Testing multithreading
+ *
+ */
+func (mlc *MusicLibraryConfig) mt_scanner() {
+	//default playlists
+	playlists := map[string]playlist_obj{
+		"all_tracks":    {playlist_name: "all_tracks", metadata_items: make([]tags.Metadata, 0)},
+		"regular_songs": {playlist_name: "regular_songs", metadata_items: make([]tags.Metadata, 0)},
+	}
+	//user custom playlists
+	for _, user_pl_config := range mlc.Custom_playlists {
+		if user_pl_config.Playlist_name == "example_name" {
+			continue
+		}
+		playlists[user_pl_config.Identifier_keyword] = playlist_obj{
+			playlist_name:  user_pl_config.Playlist_name,
+			ident_category: user_pl_config.Identifier_category,
+			ident_keyword:  user_pl_config.Identifier_keyword,
+			ident_wild:     user_pl_config.Is_lookup_wildcard,
+			metadata_items: make([]tags.Metadata, 0),
+		}
+	}
+
+	//thread_count := 3
+	dir_for_scan := make(chan string)
+	new_playlists := make(chan playlist_obj)
+
+	go func() {
+		defer close(dir_for_scan)
+		defer close(new_playlists)
+		mt_getDirForScanAndDirPlaylists(mlc.Songs_dir, dir_for_scan, new_playlists, &playlists)
+	}()
+
+	for v := range dir_for_scan {
+		fmt.Println(v)
+	}
+
+	for v := range new_playlists {
+		fmt.Println(v)
+	}
+
+	// for i := 0; i < thread_count; i++ {
+	// 	defer close(dir_for_scan)
+	// 	defer close(new_playlists)
+	// 	go mt_getDirForScanAndDirPlaylists(mlc.Songs_dir, dir_for_scan, new_playlists, &playlists)
+	// }
+
+	// for {
+	// 	new_pl, ok := <- new_playlists
+	// 	if !ok {
+	// 		break
+	// 	} else {
+	// 		fmt.Println(new_pl)
+	// 	}
+	// }
+
+	var missing_handling_for_files []string
+
+	//scanForMetadata(dir_for_scan, &playlists, &missing_handling_for_files)
+	fmt.Printf("Missing parsing of file types: %v\n", missing_handling_for_files)
+
+	fmt.Println(len(playlists), "playlist object items:")
+	for _, pl_item := range playlists {
+		fmt.Println("Playlist Name:", pl_item.playlist_name)
+		//fmt.Printf("%+v\n", pl_item)
+		fmt.Println(pl_item.playlist_name, "len: ", len(pl_item.metadata_items))
+	}
+
+	err := mlc.writeXSPFplaylists(&playlists)
+	if err != nil {
+		panic(err)
+	}
+}
+
+func mt_getDirForScanAndDirPlaylists(dir string, dir_chan chan string, pl_chan chan playlist_obj, playlists *map[string]playlist_obj) {
+	files, _ := os.ReadDir(dir)
+
+	for _, file := range files {
+		if file.IsDir() && strings.Contains(file.Name(), "_soundtracks") {
+			//fmt.Printf("Scan This: '%s'\n", file.Name())
+
+			//make new playlist based on the dir
+			full_dir := dir + "/" + file.Name()
+			parts := strings.Split(full_dir, "/_")
+			pl_name := strings.Split(parts[1], "_soundtracks")[0] + "_soundtracks"
+			pl_ident := "_" + pl_name
+
+			_, exists := (*playlists)[pl_ident]
+			if !exists {
+				//fmt.Println(" !!! NEW PLAYLIST !!!")
+				//fmt.Print(strings.ToUpper(pl_ident)+": ", full_dir)
+				new_pl_obj := playlist_obj{
+					playlist_name:  pl_name,
+					metadata_items: make([]tags.Metadata, 0),
+				}
+				//fmt.Println(len(metadata))
+				//(*playlists)[pl_ident] = new_pl_obj
+				pl_chan <- new_pl_obj
+				//fmt.Println("count",strings.ToUpper(pl_ident)+": ", len((*playlists)[pl_ident].metadata_items))
+			}
+
+			mt_getDirForScanAndDirPlaylists(dir+"/"+file.Name(), dir_chan, pl_chan, playlists)
+			//result = append(result, data...)
+			dir_chan <- dir+"/"+file.Name()
+		} else {
+			//fmt.Printf("Add This: '%s'\n", file.Name())
+			//result = append(result, dir+"/"+file.Name())
+			dir_chan <- dir+"/"+file.Name()
+		}
+	}
 }

@@ -18,5 +18,6 @@ func main() {
 
 	//fmt.Println(app_config)
 
-	app_config.music_library_config.scanner()
+	//app_config.music_library_config.scanner()
+	app_config.music_library_config.mt_scanner()
 }

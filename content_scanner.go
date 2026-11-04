@@ -5,6 +5,7 @@ import (
 	"os"
 	"slices"
 	"strings"
+	"sync"
 
 	"github.com/t6kke/playlistmaker/internal/tags"
 )
@@ -231,63 +232,87 @@ func recursive_scanner(dir, spacer string, missing_handling_for_files *[]string)
  * Testing multithreading
  *
  */
-func (mlc *MusicLibraryConfig) mt_scanner() {
-	//default playlists
-	playlists := map[string]playlist_obj{
+var (
+	playlists = map[string]playlist_obj{
 		"all_tracks":    {playlist_name: "all_tracks", metadata_items: make([]tags.Metadata, 0)},
 		"regular_songs": {playlist_name: "regular_songs", metadata_items: make([]tags.Metadata, 0)},
 	}
+	mu sync.Mutex
+)
+func addToPlaylistMap(keyword string, pl_obj playlist_obj) {
+	mu.Lock()
+	playlists[keyword] = pl_obj
+	mu.Unlock()
+}
+func updatePlaylistItem(keyword string, pl_obj playlist_obj) {
+	mu.Lock()
+	playlists[keyword] = pl_obj
+	mu.Unlock()
+}
+func (mlc *MusicLibraryConfig) mt_scanner() {
+	//default playlists
+
+	// playlists := map[string]playlist_obj{
+	// 	"all_tracks":    {playlist_name: "all_tracks", metadata_items: make([]tags.Metadata, 0)},
+	// 	"regular_songs": {playlist_name: "regular_songs", metadata_items: make([]tags.Metadata, 0)},
+	// }
+
 	//user custom playlists
+	// for _, user_pl_config := range mlc.Custom_playlists {
+	// 	if user_pl_config.Playlist_name == "example_name" {
+	// 		continue
+	// 	}
+	// 	playlists[user_pl_config.Identifier_keyword] = playlist_obj{
+	// 		playlist_name:  user_pl_config.Playlist_name,
+	// 		ident_category: user_pl_config.Identifier_category,
+	// 		ident_keyword:  user_pl_config.Identifier_keyword,
+	// 		ident_wild:     user_pl_config.Is_lookup_wildcard,
+	// 		metadata_items: make([]tags.Metadata, 0),
+	// 	}
+	// }
+
+	//user custom playlists for MT
 	for _, user_pl_config := range mlc.Custom_playlists {
 		if user_pl_config.Playlist_name == "example_name" {
 			continue
 		}
-		playlists[user_pl_config.Identifier_keyword] = playlist_obj{
+
+		pl_obj := playlist_obj{
 			playlist_name:  user_pl_config.Playlist_name,
 			ident_category: user_pl_config.Identifier_category,
 			ident_keyword:  user_pl_config.Identifier_keyword,
 			ident_wild:     user_pl_config.Is_lookup_wildcard,
 			metadata_items: make([]tags.Metadata, 0),
 		}
+		addToPlaylistMap(user_pl_config.Identifier_keyword, pl_obj)
 	}
 
 	//thread_count := 3
 	dir_for_scan := make(chan string)
-	new_playlists := make(chan playlist_obj)
 
+	var wg sync.WaitGroup
+	wg.Add(1)
 	go func() {
+		defer wg.Done()
 		defer close(dir_for_scan)
-		defer close(new_playlists)
-		mt_getDirForScanAndDirPlaylists(mlc.Songs_dir, dir_for_scan, new_playlists, &playlists)
+		mt_getDirForScanAndDirPlaylists(mlc.Songs_dir, dir_for_scan, &playlists)
 	}()
 
-	for v := range dir_for_scan {
-		fmt.Println(v)
-	}
 
-	for v := range new_playlists {
-		fmt.Println(v)
-	}
-
-	// for i := 0; i < thread_count; i++ {
-	// 	defer close(dir_for_scan)
-	// 	defer close(new_playlists)
-	// 	go mt_getDirForScanAndDirPlaylists(mlc.Songs_dir, dir_for_scan, new_playlists, &playlists)
+	// for v := range dir_for_scan {
+	// 	fmt.Println(v)
 	// }
-
-	// for {
-	// 	new_pl, ok := <- new_playlists
-	// 	if !ok {
-	// 		break
-	// 	} else {
-	// 		fmt.Println(new_pl)
-	// 	}
-	// }
-
 	var missing_handling_for_files []string
+	for i := 0; i <= 3; i++ {
+		wg.Add(1)
+		go mt_scanForMetadata(dir_for_scan,&playlists, &missing_handling_for_files, &wg)
+	}
+	wg.Wait()
+
+
 
 	//scanForMetadata(dir_for_scan, &playlists, &missing_handling_for_files)
-	fmt.Printf("Missing parsing of file types: %v\n", missing_handling_for_files)
+	fmt.Printf("File types not handled by the parser: %v\n", missing_handling_for_files)
 
 	fmt.Println(len(playlists), "playlist object items:")
 	for _, pl_item := range playlists {
@@ -302,7 +327,7 @@ func (mlc *MusicLibraryConfig) mt_scanner() {
 	}
 }
 
-func mt_getDirForScanAndDirPlaylists(dir string, dir_chan chan string, pl_chan chan playlist_obj, playlists *map[string]playlist_obj) {
+func mt_getDirForScanAndDirPlaylists(dir string, dir_chan chan <- string, playlists *map[string]playlist_obj) {
 	files, _ := os.ReadDir(dir)
 
 	for _, file := range files {
@@ -314,6 +339,7 @@ func mt_getDirForScanAndDirPlaylists(dir string, dir_chan chan string, pl_chan c
 			parts := strings.Split(full_dir, "/_")
 			pl_name := strings.Split(parts[1], "_soundtracks")[0] + "_soundtracks"
 			pl_ident := "_" + pl_name
+			//fmt.Println(pl_ident)
 
 			_, exists := (*playlists)[pl_ident]
 			if !exists {
@@ -324,18 +350,99 @@ func mt_getDirForScanAndDirPlaylists(dir string, dir_chan chan string, pl_chan c
 					metadata_items: make([]tags.Metadata, 0),
 				}
 				//fmt.Println(len(metadata))
-				//(*playlists)[pl_ident] = new_pl_obj
-				pl_chan <- new_pl_obj
+				(*playlists)[pl_ident] = new_pl_obj
 				//fmt.Println("count",strings.ToUpper(pl_ident)+": ", len((*playlists)[pl_ident].metadata_items))
 			}
 
-			mt_getDirForScanAndDirPlaylists(dir+"/"+file.Name(), dir_chan, pl_chan, playlists)
+			mt_getDirForScanAndDirPlaylists(dir+"/"+file.Name(), dir_chan, playlists)
 			//result = append(result, data...)
 			dir_chan <- dir+"/"+file.Name()
 		} else {
 			//fmt.Printf("Add This: '%s'\n", file.Name())
 			//result = append(result, dir+"/"+file.Name())
 			dir_chan <- dir+"/"+file.Name()
+		}
+	}
+}
+
+func mt_scanForMetadata(dir_chan <- chan string, playlists *map[string]playlist_obj, missing_handling_for_files *[]string, wg *sync.WaitGroup) {
+	defer wg.Done()
+
+	//for dir := range dir_chan {
+	for {
+		dir, ok := <- dir_chan
+		if !ok {
+			break
+		}
+		metadata := recursive_scanner(dir, "", missing_handling_for_files)
+		fmt.Print("ALL: ", dir)
+		fmt.Println(" --- nbr", len(metadata))
+		if len(metadata) == 0 {
+			return
+		}
+
+		item := (*playlists)["all_tracks"]
+		item.metadata_items = append(item.metadata_items, metadata...)
+		//(*playlists)["all_tracks"] = item
+		updatePlaylistItem("all_tracks", item)
+		//fmt.Println("count ALL: ", len((*playlists)["all_tracks"].metadata_items))
+
+		for pl_id, playlist := range *playlists {
+			if isUserCustomPL(pl_id) {
+				switch playlist.ident_category {
+					case 1:
+						if strings.EqualFold(metadata[0].Creator, playlist.ident_keyword) {
+							item := (*playlists)[pl_id]
+							item.metadata_items = append(item.metadata_items, metadata...)
+							//(*playlists)[pl_id] = item
+							updatePlaylistItem(pl_id, item)
+						}
+					case 2:
+						if playlist.ident_wild {
+							if strings.Contains(strings.ToLower(metadata[0].Album), strings.ToLower(playlist.ident_keyword)) {
+								item := (*playlists)[pl_id]
+								item.metadata_items = append(item.metadata_items, metadata...)
+								//(*playlists)[pl_id] = item
+								updatePlaylistItem(pl_id, item)
+							}
+						} else {
+							if strings.EqualFold(metadata[0].Album, playlist.ident_keyword) {
+								item := (*playlists)[pl_id]
+								item.metadata_items = append(item.metadata_items, metadata...)
+								//(*playlists)[pl_id] = item
+								updatePlaylistItem(pl_id, item)
+							}
+						}
+				}
+			}
+		}
+
+		if strings.Contains(dir, "/_") && strings.Contains(dir, "_soundtracks") {
+			parts := strings.Split(dir, "/_")
+			pl_name := strings.Split(parts[1], "_soundtracks/")[0] + "_soundtracks"
+			pl_ident := "_" + pl_name
+
+			_, exists := (*playlists)[pl_ident]
+			if !exists {
+				//TODO handle situation where playlist based on directory does not exists. but this situation should never happen
+			}
+
+			//fmt.Print(strings.ToUpper(pl_ident)+": ", dir)
+			//fmt.Println(" --- nbr", len(metadata))
+			item := (*playlists)[pl_ident]
+			item.metadata_items = append(item.metadata_items, metadata...)
+			//(*playlists)[pl_ident] = item
+			updatePlaylistItem(pl_ident, item)
+			//fmt.Println("count",strings.ToUpper(pl_ident)+": ", len((*playlists)[pl_ident].metadata_items))
+
+		} else {
+			//fmt.Print("SONGS: ", dir)
+			//fmt.Println(" --- nbr", len(metadata))
+			item := (*playlists)["regular_songs"]
+			item.metadata_items = append(item.metadata_items, metadata...)
+			//(*playlists)["regular_songs"] = item
+			updatePlaylistItem("regular_songs", item)
+			//fmt.Println("count SONGS: ", len((*playlists)["regular_songs"].metadata_items))
 		}
 	}
 }

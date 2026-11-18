@@ -249,6 +249,15 @@ func updatePlaylistItem(keyword string, pl_obj playlist_obj) {
 	playlists[keyword] = pl_obj
 	mu.Unlock()
 }
+var (
+	missing_handling_for_files []string
+	mu_fx sync.Mutex
+)
+func addMissingFileExtension(file_extension string, missing_handling_for_files *[]string) {
+	mu_fx.Lock()
+	*missing_handling_for_files = append(*missing_handling_for_files, file_extension)
+	mu_fx.Unlock()
+}
 func (mlc *MusicLibraryConfig) mt_scanner() {
 	//default playlists
 
@@ -298,15 +307,24 @@ func (mlc *MusicLibraryConfig) mt_scanner() {
 		mt_getDirForScanAndDirPlaylists(mlc.Songs_dir, dir_for_scan, &playlists)
 	}()
 
-
 	// for v := range dir_for_scan {
 	// 	fmt.Println(v)
 	// }
-	var missing_handling_for_files []string
+	//var missing_handling_for_files []string
 	for i := 0; i <= 3; i++ {
 		wg.Add(1)
-		go mt_scanForMetadata(dir_for_scan,&playlists, &missing_handling_for_files, &wg)
+		go mt_scanForMetadata(dir_for_scan,&playlists, &missing_handling_for_files, &wg, i)
+		// go func() {
+		// 	defer wg.Done()
+		// 	mt_scanForMetadata(dir_for_scan,&playlists, &missing_handling_for_files, &wg, i)
+		// }()
 	}
+
+	// wg.Add(1)
+	// go func() {
+	// 	defer wg.Done()
+	// 	mt_scanForMetadata(dir_for_scan,&playlists, &missing_handling_for_files, &wg, 1)
+	// }()
 	wg.Wait()
 
 
@@ -365,7 +383,7 @@ func mt_getDirForScanAndDirPlaylists(dir string, dir_chan chan <- string, playli
 	}
 }
 
-func mt_scanForMetadata(dir_chan <- chan string, playlists *map[string]playlist_obj, missing_handling_for_files *[]string, wg *sync.WaitGroup) {
+func mt_scanForMetadata(dir_chan <- chan string, playlists *map[string]playlist_obj, missing_handling_for_files *[]string, wg *sync.WaitGroup, thread_id int) {
 	defer wg.Done()
 
 	//for dir := range dir_chan {
@@ -374,11 +392,11 @@ func mt_scanForMetadata(dir_chan <- chan string, playlists *map[string]playlist_
 		if !ok {
 			break
 		}
-		metadata := recursive_scanner(dir, "", missing_handling_for_files)
-		fmt.Print("ALL: ", dir)
+		metadata := recursive_scanner2(dir, "", missing_handling_for_files)
+		fmt.Print("Thread ID: ", thread_id, " --- ALL: ", dir)
 		fmt.Println(" --- nbr", len(metadata))
 		if len(metadata) == 0 {
-			return
+			continue
 		}
 
 		item := (*playlists)["all_tracks"]
@@ -445,4 +463,39 @@ func mt_scanForMetadata(dir_chan <- chan string, playlists *map[string]playlist_
 			//fmt.Println("count SONGS: ", len((*playlists)["regular_songs"].metadata_items))
 		}
 	}
+}
+
+func recursive_scanner2(dir, spacer string, missing_handling_for_files *[]string) []tags.Metadata {
+	files, _ := os.ReadDir(dir)
+	file_count := 0
+	music_file_count := 0
+	var result_data []tags.Metadata
+	for _, file := range files {
+		file_count += 1
+		file_extension := strings.ToLower(strings.Split(file.Name(), ".")[len(strings.Split(file.Name(), "."))-1])
+		if !file.IsDir() && !slices.Contains(getAudioFileExtensions(), file_extension) && !slices.Contains(getNotRelevantFileExtensions(), file_extension) {
+			//fmt.Printf("Missing file extention parsing for: '%s'\n",file_extension)
+			if !slices.Contains(*missing_handling_for_files, file_extension) {
+				//*missing_handling_for_files = append(*missing_handling_for_files, file_extension)
+				addMissingFileExtension(file_extension, missing_handling_for_files)
+			}
+		}
+		if !file.IsDir() && slices.Contains(getAudioFileExtensions(), file_extension) {
+
+			music_file_count += 1
+			metadata, err := tags.ExtractMetadata(dir+"/"+file.Name(), music_file_count, file_extension)
+			if err != nil {
+				return []tags.Metadata{}
+			}
+			//fmt.Printf("%+v\n", metadata)
+			result_data = append(result_data, metadata)
+			//fmt.Println(music_file_count, result_data)
+
+		} else if file.IsDir() {
+			//fmt.Println(spacer, file.Name())
+			data := recursive_scanner2(dir+"/"+file.Name(), spacer+"   ", missing_handling_for_files)
+			result_data = append(result_data, data...)
+		}
+	}
+	return result_data
 }

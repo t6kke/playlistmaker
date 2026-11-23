@@ -16,12 +16,13 @@ Application configurations are stored in plm_conf.json file in users profile .co
 - When information is missing then file name na directory path information is used as an alternative although it can cause faulty information due to data quality issues.
 - Multiple playlist files are created based on folder structure
 - Custom playlists from configuration file by user
+- Multithreaded content scanning
 
 Playlyst output is written into .xspf xml formatted playlist file.
 
 ## General ToDo items
 
-- Metadata collection for missing formats(m4a, ogg, wma)
+- Metadata collection for missing formats(m4a, ogg, wma, wav)
 - Additional flag handling for ID3 tags
 - Better extraction of metadata based on file path
 - Custom playlists category support for genre and year(s)

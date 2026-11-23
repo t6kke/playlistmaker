@@ -296,7 +296,6 @@ func (mlc *MusicLibraryConfig) mt_scanner() {
 		addToPlaylistMap(user_pl_config.Identifier_keyword, pl_obj)
 	}
 
-	//thread_count := 3
 	dir_for_scan := make(chan string)
 
 	var wg sync.WaitGroup
@@ -311,7 +310,8 @@ func (mlc *MusicLibraryConfig) mt_scanner() {
 	// 	fmt.Println(v)
 	// }
 	//var missing_handling_for_files []string
-	for i := 0; i <= 3; i++ {
+	thread_count := 4 //TODO figure out what good solution for number of threads setting would be
+	for i := 1; i <= thread_count; i++ {
 		wg.Add(1)
 		go mt_scanForMetadata(dir_for_scan,&playlists, &missing_handling_for_files, &wg, i)
 		// go func() {
@@ -326,8 +326,6 @@ func (mlc *MusicLibraryConfig) mt_scanner() {
 	// 	mt_scanForMetadata(dir_for_scan,&playlists, &missing_handling_for_files, &wg, 1)
 	// }()
 	wg.Wait()
-
-
 
 	//scanForMetadata(dir_for_scan, &playlists, &missing_handling_for_files)
 	fmt.Printf("File types not handled by the parser: %v\n", missing_handling_for_files)
@@ -349,6 +347,7 @@ func mt_getDirForScanAndDirPlaylists(dir string, dir_chan chan <- string, playli
 	files, _ := os.ReadDir(dir)
 
 	for _, file := range files {
+		//fmt.Println("DirThread ID: 0 --- Dir:", file)
 		if file.IsDir() && strings.Contains(file.Name(), "_soundtracks") {
 			//fmt.Printf("Scan This: '%s'\n", file.Name())
 
@@ -360,21 +359,27 @@ func mt_getDirForScanAndDirPlaylists(dir string, dir_chan chan <- string, playli
 			//fmt.Println(pl_ident)
 
 			_, exists := (*playlists)[pl_ident]
+			created_new := false
 			if !exists {
 				//fmt.Println(" !!! NEW PLAYLIST !!!")
-				//fmt.Print(strings.ToUpper(pl_ident)+": ", full_dir)
+				//fmt.Println(strings.ToUpper(pl_ident)+": ", full_dir)
 				new_pl_obj := playlist_obj{
 					playlist_name:  pl_name,
 					metadata_items: make([]tags.Metadata, 0),
 				}
 				//fmt.Println(len(metadata))
-				(*playlists)[pl_ident] = new_pl_obj
+				//(*playlists)[pl_ident] = new_pl_obj
+				addToPlaylistMap(pl_ident, new_pl_obj)
 				//fmt.Println("count",strings.ToUpper(pl_ident)+": ", len((*playlists)[pl_ident].metadata_items))
+				created_new = true
 			}
 
 			mt_getDirForScanAndDirPlaylists(dir+"/"+file.Name(), dir_chan, playlists)
 			//result = append(result, data...)
-			dir_chan <- dir+"/"+file.Name()
+			if !created_new {
+				dir_chan <- dir+"/"+file.Name()
+			}
+			//dir_chan <- dir+"/"+file.Name()
 		} else {
 			//fmt.Printf("Add This: '%s'\n", file.Name())
 			//result = append(result, dir+"/"+file.Name())
@@ -393,8 +398,8 @@ func mt_scanForMetadata(dir_chan <- chan string, playlists *map[string]playlist_
 			break
 		}
 		metadata := recursive_scanner2(dir, "", missing_handling_for_files)
-		fmt.Print("Thread ID: ", thread_id, " --- ALL: ", dir)
-		fmt.Println(" --- nbr", len(metadata))
+		//fmt.Print("ScnThread ID: ", thread_id, " --- ALL: ", dir)
+		//fmt.Println(" --- nbr", len(metadata))
 		if len(metadata) == 0 {
 			continue
 		}
